@@ -7,6 +7,9 @@ It implements and analyzes the concepts presented in the paper **[Perfect Recove
 
 The core idea tested is that by carefully selecting the normalized threshold `d_norm` (related to the ASDM's hysteresis (`delta`, bias `b` and gain `k`), a bandlimited signal can be efficiently represented by asynchronous spike times and recovered with high fidelity, potentially outperforming uniform sampling at equivalent data rates under certain conditions.
 
+> [!NOTE]
+> **Developer's Note:** This toolkit evolved alongside my understanding for my final degree project. While learning, I built features for parametric studies on sampling frequency (`fs`) and both `fs`/`d_norm`. Later, I realized that for this asynchronous ASDM, only the study on the normalized threshold (d_norm) is truly meaningful theoretically. The other studies still work because the code is flexible, but the main focus now should be the `d_norm` results. I've kept the extra study code because it was already built and represents the project's maturity process. Future analysis using this tool should prioritize the `d_norm` study.
+
 ## Core Concepts 
 
 1. **Time Encoding/Decoding (TEM/TDM):** A method where signal amplitude information is encoded into the timing of discrete events (spikes or level crossings) rather than sampled at fixed intervals. 
@@ -142,6 +145,7 @@ Thinking of the TEM-TDM Toolkit as a specialized manufacturing plant for process
 
 6.  **Shipping:** The plant delivers the final requested outputs (plots, data summaries, optimal parameters) as specified in the original blueprint (`config.txt`) and stored in the `Output/` warehouse.
 
+
 ## Installation
 
 You can run this toolkit either locally on your machine or directly within Google Colab. **Running on Google Colab is recommended** for easier setup and access to computational resources.
@@ -212,3 +216,17 @@ This file uses a simple `Key: Value` format, with comments denoted by `#`. Befor
 
 **Refer to the detailed comments within the `config.txt` file itself for explanations of each specific parameter.**
 
+
+## A Note on Project Evolution and Scope
+
+This toolkit represents a significant part of my final degree project (TFG), but it wasn't the initial plan. My degree project involves both understanding the theory behind ASDM encoding/decoding for turbulent signals (based on the Bionet group's research) and conducting experiments at INTA to characterize turbulence using a sweeping jet actuator.
+
+Early on, I realized that simply pursuing the theoretical and experimental parts separately wouldn't be as impactful or satisfying. I wanted to actively connect them and create something tangible and meaningful. This led to the idea of building this toolkit – refactoring my initial simulation codes into a flexible and scalable tool.
+
+**This refactoring effort, and the design philosophy behind it, wouldn't have been possible without the experiences gained at my workplace and the invaluable guidance of Fernando.** The constant need to automate processes requires to identify patterns, group functions into logical tasks and even workflows. He fostered a deeper appreciation for Python as a versatile tool – a true canvas for building complex solutions. It is a true skill to abstract technical details to build flexible systems, which he is a master of. Surrounded by this rich environment, the tool could only be born. This experience directly inspired the concept of structuring this toolkit like a "manufacturing plant," with distinct workflows, managers, and specialized units.
+
+As the workload from my cousework progressed and complexity of the analysis increased, I needed an efficient way to run various simulations, manage data interactions, and store results without getting bogged down. This toolkit became the bridge, allowing me to test theoretical concepts (like the ASDM parameters) and potentially apply them to experimental data contexts later.
+
+This evolution is also reflected in the available parametric studies. As my understanding deepened, it became clear that for analyzing this *asynchronous* ASDM, varying the **normalized threshold (`d_norm`)** is the most theoretically relevant approach. However, the toolkit retains the capability for frequency (`fs`) and biparametric (`fs`, `d_norm`) sweeps, which were part of the initial exploration and the drive to build a flexible framework. While these `fs`-related studies remain functional, future analysis using this tool should prioritize the insights gained from the `d_norm` study.
+
+Building this toolkit has been an invaluable learning experience, significantly enhancing my understanding of the underlying theory. Although it emerged from the specific needs of my degree project, I believe its structured approach could be beneficial to others in the research department or anyone undertaking similar signal-processing explorations. **I hope this repository serves as a useful example and a building block for bigger and better things.**
