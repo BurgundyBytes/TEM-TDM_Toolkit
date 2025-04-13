@@ -1,0 +1,18 @@
+# requirements.txt for TEM-TDM Toolkit
+
+# Core scientific computing
+numpy
+scipy
+
+# Data handling and I/O
+pandas
+openpyxl  # Required by pandas for .xlsx support
+
+# Machine Learning / Metrics
+scikit-learn  # For sklearn.metrics.r2_score
+
+# Plotting
+matplotlib
+
+# Note: Built-in modules like sys, os, logging, time, typing, datetime, pickle
+# are part of the standard Python library and do not need to be listed here.
