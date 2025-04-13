@@ -1,7 +1,7 @@
 # TEM-TDM Toolkit
 This Python toolkit is designed to assess the validity and performance of Asynchronous Sigma-Delta Modulators (ASDM) when used as Time Encoding Machines (TEM) and Time Decoding Machines (TDM), particularly for complex or turbulent signals. 
 
-It implements and analyzes the concepts presented in the paper [Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf) by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit specifically allows for studying the *normalized equivalent circuit* proposed in the paper, focusing on how the **normalized threshold (`d_norm`)** affects signal recovery. 
+It implements and analyzes the concepts presented in the paper **[Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf)** by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit specifically allows for studying the *normalized equivalent circuit* proposed in the paper, focusing on how the **normalized threshold (`d_norm`)** affects signal recovery. 
 
 ![Normalized TEM Equivalent Circuit Diagram](docs/resources/ASDM_Equivalent_Circuit.PNG)
 
@@ -27,9 +27,10 @@ The core idea tested is that by carefully selecting the normalized threshold `d_
 
 ```plaintext
 ├── docs                     # Documentation and diagrams
-│   ├── workflows            # Mermaid diagrams for workflows
-│   ├── functionalities      # Mermaid diagrams for core functions
-│   └── project_structure.md # Visualization of the structure
+│   ├── managers             # Managers' documentation
+│   ├── functionalities      # Core functions' documentation
+│   ├── resources            # Resources accessible to the toolkit: images, .pfd, ...
+│   └── project.md           # Toolkit overview
 ├── src                      # Source code
 │   ├── controllers          # Handlers for configuration, input, studies, results
 │   │   ├── configuration.py
@@ -60,7 +61,8 @@ The core idea tested is that by carefully selecting the normalized threshold `d_
 │   ├── optima               # Results for optimal conditions study
 ├── launcher.py              # Main script to run the toolkit
 ├── config.txt               # Configuration file for specifying runs
-└── requirements.txt         # Python package dependencies
+├── requirements.txt         # Python package dependencies
+└── TEM-TDM_Toolkit.ipynb    # Code to be run in Google Colab
 ```
 
 ## Repository explanation: Manufacturing plant analogy
