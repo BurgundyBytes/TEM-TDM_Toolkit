@@ -159,16 +159,12 @@ def _run_single_simulation(
 
 
 # --- Public Study Functions ---
-def parametric_freq(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.ndarray, d_norm: float, b: float, dte: float, freq_max: float, start_idx: int, end_idx: int, log_filename: str, output_dir: str, signal_name: str, log_study: bool = False, plot_study: bool = False, save_raw: bool = False) -> Optional[pd.DataFrame]:
-    '''Parametric study on sampling frequency.'''
+def parametric_bias(u: np.ndarray, t: np.ndarray, dur: float, fs: float, d_norm: float, bias: np.ndarray, dte: float, freq_max: float, start_idx: int, end_idx: int, log_filename: str, output_dir: str, signal_name: str, log_study: bool = False, plot_study: bool = False, save_raw: bool = False) -> Optional[pd.DataFrame]:
+    '''Parametric study on encoder bias'''
     metrics_results_list: List[MetricsDict] = []
-    study_tag = "PF" # Tag for filenames
+    study_tag = "PB" # Tag for filenames
 
     # Basic checks using logger
-    if abs(b) < 1e-12: 
-        logger.error(f"Error ({study_tag} {signal_name}): Encoder bias 'b' is zero or too close. Aborting study.")
-        return None
-    
     if output_dir and not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir, exist_ok=True)
@@ -182,17 +178,17 @@ def parametric_freq(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.ndarray,
     if log_study and output_dir and log_filename:
          try:
             full_log_path = os.path.join(output_dir, log_filename)
-            fixed_params = {utils.COL_D_NORM: d_norm, utils.COL_B: b, utils.COL_DTE: dte}
+            fixed_params = {utils.COL_D_NORM: d_norm, utils.COL_FS: fs, utils.COL_DTE: dte}
             # Use the specific logging function for headers
-            project_logging.log_study_header(full_log_path, f"Frequency Sweep ({signal_name})", freqs, fixed_params)
+            project_logging.log_study_header(full_log_path, f"Bias Sweep ({signal_name})", bias, fixed_params)
             logger.info(f"Initialized study log file: {log_filename}")
          except Exception as e:
             logger.error(f"Failed to initialize study log file {log_filename}: {e}", exc_info=True)
             # Decide if study should abort if logging fails? For now, continue.
             log_study = False # Disable further logging for this study if header failed
 
-    # Loop through frequencies
-    for fs in freqs:
+    # Loop through encoder bias
+    for b in bias:
         try:
             # Call the simulation helper
             metrics_dict = _run_single_simulation(u, t, dur, fs, d_norm, b, dte, freq_max,
@@ -204,20 +200,20 @@ def parametric_freq(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.ndarray,
                 metrics_results_list.append(metrics_dict)
         except Exception as e:
             # Catch unexpected errors from the simulation call itself
-            logger.error(f"  Critical unhandled error during simulation call for fs={fs}: {e}. Skipping.", exc_info=True)
-            continue # Continue to the next frequency
+            logger.error(f"  Critical unhandled error during simulation call for b={b}: {e}. Skipping.", exc_info=True)
+            continue # Continue to the next bias value
 
     # Process results
     if not metrics_results_list:
-        logger.warning(f"Parametric study on f_samp ({signal_name}) yielded no valid results.")
+        logger.warning(f"Parametric study on bias ({signal_name}) yielded no valid results.")
         return None
 
     try:
-        df_freq = pd.DataFrame(metrics_results_list)
-        logger.info(f"Parametric study on f_samp ({signal_name}) complete. {len(df_freq)} points successfully processed.")
-        return df_freq
+        df_bias = pd.DataFrame(metrics_results_list)
+        logger.info(f"Parametric study on bias ({signal_name}) complete. {len(df_bias)} points successfully processed.")
+        return df_bias
     except Exception as e:
-        logger.error(f"Failed to create DataFrame from frequency study results for {signal_name}: {e}", exc_info=True)
+        logger.error(f"Failed to create DataFrame from bias study results for {signal_name}: {e}", exc_info=True)
         return None
 
 
@@ -244,7 +240,7 @@ def parametric_delta(u: np.ndarray, t: np.ndarray, dur: float, fs: float, deltas
     if log_study and output_dir and log_filename:
          try:
             full_log_path = os.path.join(output_dir, log_filename)
-            fixed_params = {utils.COL_FS: fs, utils.COL_B: b, utils.COL_DTE: dte}
+            fixed_params = {utils.COL_B: b, utils.COL_FS: fs, utils.COL_DTE: dte}
             project_logging.log_study_header(full_log_path, f"Delta Sweep ({signal_name})", deltas, fixed_params)
             logger.info(f"Initialized study log file: {log_filename}")
          except Exception as e:
@@ -279,15 +275,11 @@ def parametric_delta(u: np.ndarray, t: np.ndarray, dur: float, fs: float, deltas
         return None
 
 
-def parametric_freq_delta(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.ndarray, deltas: np.ndarray, b: float, dte: float, freq_max: float, start_idx: int, end_idx: int, log_filename: str, output_dir: str, signal_name: str, log_study: bool = False, plot_study: bool = False, save_raw: bool = False) -> Optional[pd.DataFrame]:
-    '''Bi-Parametric study on sampling frequency and normalized threshold.'''
+def parametric_bias_delta(u: np.ndarray, t: np.ndarray, dur: float, fs: float, deltas: np.ndarray, bias: np.ndarray, dte: float, freq_max: float, start_idx: int, end_idx: int, log_filename: str, output_dir: str, signal_name: str, log_study: bool = False, plot_study: bool = False, save_raw: bool = False) -> Optional[pd.DataFrame]:
+    '''Bi-Parametric study on encoder bias and normalized threshold.'''
     metrics_results_list: List[MetricsDict] = []
-    study_tag = "PFD"
+    study_tag = "PBD"
 
-    if abs(b) < 1e-12:
-        logger.error(f"Error ({study_tag} {signal_name}): Encoder bias 'b' is zero or too close. Aborting.")
-        return None
-    
     if output_dir and not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir, exist_ok=True)
@@ -301,9 +293,9 @@ def parametric_freq_delta(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.nd
     if log_study and output_dir and log_filename:
         try:
             full_log_path = os.path.join(output_dir, log_filename)
-            fixed_params = {utils.COL_B: b, utils.COL_DTE: dte}
-            param_ranges = {utils.COL_FS: freqs, utils.COL_D_NORM: deltas} # Pass dict for biparametric ranges
-            project_logging.log_study_header(full_log_path, f"Freq/Delta Sweep ({signal_name})", param_ranges, fixed_params)
+            fixed_params = {utils.COL_FS: fs, utils.COL_DTE: dte}
+            param_ranges = {utils.COL_B: bias, utils.COL_D_NORM: deltas} # Pass dict for biparametric ranges
+            project_logging.log_study_header(full_log_path, f"Bias/Delta Sweep ({signal_name})", param_ranges, fixed_params)
             logger.info(f"Initialized study log file: {log_filename}")
         except Exception as e:
             logger.error(f"Failed to initialize study log file {log_filename}: {e}", exc_info=True)
@@ -311,13 +303,13 @@ def parametric_freq_delta(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.nd
 
 
     # Optional: Warning about large number of outputs
-    num_points = len(freqs) * len(deltas)
+    num_points = len(bias) * len(deltas)
     if num_points > 1000 and (plot_study or save_raw):
         logger.warning(f"Plotting/Saving raw data enabled for large biparametric study ({num_points} points) for {signal_name}. This may generate many files/take time.")
 
     total_processed = 0
-    # Loop through frequencies and deltas
-    for fs in freqs:
+    # Loop through bias and deltas
+    for b in bias:
         for d_norm in deltas:
             try:
                 metrics_dict = _run_single_simulation(u, t, dur, fs, d_norm, b, dte, freq_max,
@@ -329,7 +321,7 @@ def parametric_freq_delta(u: np.ndarray, t: np.ndarray, dur: float, freqs: np.nd
                     metrics_results_list.append(metrics_dict)
                     total_processed += 1 # Count successful runs
             except Exception as e:
-                logger.error(f"  Critical unhandled error during simulation call for fs={fs}, d_norm={d_norm}: {e}. Skipping.", exc_info=True)
+                logger.error(f"  Critical unhandled error during simulation call for b={b}, d_norm={d_norm}: {e}. Skipping.", exc_info=True)
                 continue
 
     # Process results

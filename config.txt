@@ -1,7 +1,7 @@
 # ----------- Settings parameters -----------
 Input Folder: Input             # Carpeta con los archivos excel que contienen los resultados de los experimentos (fuentes de señal)
 Output Folder: Output           # Carpeta con los resultados de todo el proceso: plots, excels, pickle, ...
-Execution Flow: True            # Corre el flujo de trabajo de ejecución de los cálculos paramétricos
+Execution Flow: False           # Corre el flujo de trabajo de ejecución de los cálculos paramétricos
 Results Flow: True              # Corre el flujo de trabajo de generación de resultados
 
 
@@ -15,9 +15,8 @@ Experiment Sampling Rate: 1000                # Sampling rate of the sensors use
 Experiment Duration: 1                        # Duration [s]
 
 ## Generated signal
-Generated Input Type: multisin                # multisin, paper, multifreq
+Generated Input Type: multifreq               # multisin, paper, multifreq
 Signal Duration: 1                            # Duration [s]
-Encoder Bias: 1				                  # Encoder bias (b)
 Encoder Resolution: 0.0                       # Encoder resolution (dte)
 Signal Sampling Rate: 20000                   # Sampling rate [Hz]
 Frequencies: 6, 20, 13                        # Frequencies of the sine waves (Hz)
@@ -25,9 +24,9 @@ Amplitudes: 0.5, 0.3, 0.15                    # Amplitudes of the sine waves
 
 
 # ----------- Output parameters -----------
-Parametric Frequency Folder: parametric_freq            # Output for the Parametric study on the sampling frequency
+Parametric Bias Folder: parametric_bias                 # Output for the Parametric study on the encoder bias
 Parametric Delta Folder: parametric_delta               # Output for the Parametric study on the normalized threshold
-Biparametric Folder: parametric_freqDelta               # Output for the Bi-Parametric study on the sampling frequency and normalized threshold
+Biparametric Folder: parametric_biasDelta               # Output for the Bi-Parametric study on the encoder bias and normalized threshold
 Nyquist Analysis Folder: nyquist                        # Output for the Nyquist analysis
 Optimal Conditions Folder: optima                       # Output for the Optimal conditions analysis
 Fourier Analysis Folder: fourier                        # Output for the Fourier analysis
@@ -38,12 +37,12 @@ Store in pickle: True                                   # Bool: do you want to s
 
 
 # ----------- Parametric Studies parameters -----------
-Run Parametric Freq: False                              # Bool: do you want to plot perform the parametric study on the sampling frequency?
-Run Parametric Delta: True                              # Bool: do you want to plot perform the parametric study on the normalized threshold?
-Run Biparametric: False                                 # Bool: do you want to plot perform the bi-parametric study on the sampling frequency and normalized threshold
-Frequency Range: 1500, 50000, 200                       # Range of sampling frequencies [Hz] -> start, end, step
+Run Parametric Bias: False                              # Bool: do you want to plot perform the parametric study on the encoder?
+Run Parametric Delta: False                             # Bool: do you want to plot perform the parametric study on the normalized threshold?
+Run Biparametric: False                                 # Bool: do you want to plot perform the bi-parametric study on the encoder bias and normalized threshold
 Delta Range: 0.0001, 0.1, 0.0001                        # Range of normalized thresholds -> start, end, step
 Default Frequency: 20000                                # Default Sampling rate [Hz]
+Default Bias: 1.05                                      # Default Encoder Bias
 Default Delta: 0.001                                    # Default Hysteresis width
 
 

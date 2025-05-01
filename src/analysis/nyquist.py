@@ -1,5 +1,5 @@
-# src/analysis/nyquist.py
 import numpy as np
+import math
 import pandas as pd
 from scipy.interpolate import CubicSpline
 import os
@@ -29,15 +29,46 @@ DEFAULT_NYQUIST_MIN_POINTS = 5 # Default minimum N if not in config
 MIN_POINTS_FOR_CUBIC = 3     # Minimum points for cubic spline
 
 # --- Helper Functions ---
-def _determine_n_range(signal_data: SignalDict, n_samples_max: int) -> Optional[range]:
+def _determine_n_range(signal_data: SignalDict, n_optima: int) -> Optional[range]:
     """
     Determines the range of N points to test based on config and max value.
     Ensures n_min is at least MIN_POINTS_FOR_CUBIC.
     """
     freq_max = signal_data.get('freq_max')
-    min_points = 2*freq_max 
-    n_points_range = range(int(min_points), n_samples_max + 1)
+    if freq_max is None or freq_max <= 0:
+        logger.error("Invalid 'freq_max'.")
+        return None
+    if n_optima < MIN_POINTS_FOR_CUBIC:
+        logger.error(f"n_optima ({n_optima}) < minimum required ({MIN_POINTS_FOR_CUBIC}).")
+        return None
 
+    # Calculate potential start point based on Nyquist, ensuring it's an integer
+    n_nyquist_float = 2.0 * freq_max
+    n_nyquist_int = int(math.ceil(n_nyquist_float)) # Use ceiling for safety
+
+    # Determine actual start N: at least MIN_POINTS_FOR_CUBIC and at least n_nyquist_int
+    start_n = max(MIN_POINTS_FOR_CUBIC, n_nyquist_int)
+
+    # Determine end N (exclusive for range)
+    end_n_exclusive = n_optima + 1
+
+    # Check if the calculated start is already beyond the end
+    if start_n >= end_n_exclusive:
+        logger.warning(f"Calculated start N ({start_n}) >= end N ({n_optima}). "
+                       f"Adjusting range to only test N={n_optima}.")
+        # Create a range that only includes n_optima
+        # Ensure n_optima itself meets the MIN_POINTS_FOR_CUBIC check (done at start)
+        n_points_range = range(n_optima, n_optima + 1)
+    else:
+        # Normal case: create range from start_n up to n_optima
+        n_points_range = range(start_n, end_n_exclusive)
+
+    if len(n_points_range) == 0:
+        # This case should theoretically be covered by the start_n >= end_n_exclusive check now
+        logger.error("Resulting N range is unexpectedly empty.")
+        return None
+
+    logger.info(f"_determine_n_range: Nyquist N range set to: {n_points_range.start} to {n_points_range.stop - 1}")
     return n_points_range
 
 def _sample_signal_by_index(t_orig: np.ndarray, u_orig: np.ndarray, n_points: int) -> Optional[Tuple[np.ndarray, np.ndarray]]:

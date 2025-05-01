@@ -55,9 +55,9 @@ def _load_summary_data(output_paths: OutputPathsDict, load_from_pickle: bool) ->
     logger.info(f"Attempting to load parametric summary data (from {'Pickle' if load_from_pickle else 'Excel'}).")
     loaded_summary_results: ParametricResultsDict = {}
     study_map = {
-        "freq":       ('param_freq', 'parametric_freq_summary'),
+        "bias":       ('param_bias', 'parametric_bias_summary'),
         "delta":      ('param_delta', 'parametric_delta_summary'),
-        "freq_delta": ('biparametric', 'parametric_freqDelta_summary')
+        "bias_delta": ('biparametric', 'parametric_biasDelta_summary')
     }
     file_ext = ".pkl" if load_from_pickle else ".xlsx"
     load_func = utils.load_pickle if load_from_pickle else utils.load_df_from_excel
@@ -90,7 +90,7 @@ def _load_summary_data(output_paths: OutputPathsDict, load_from_pickle: bool) ->
 
                     if isinstance(df, pd.DataFrame) and not df.empty:
                         if signal_name not in loaded_summary_results:
-                            loaded_summary_results[signal_name] = {"freq": None, "delta": None, "freq_delta": None}
+                            loaded_summary_results[signal_name] = {"bias": None, "delta": None, "bias_delta": None}
                         loaded_summary_results[signal_name][study_type] = df
                         logger.debug(f"\tSuccessfully loaded summary for '{signal_name}', study '{study_type}'. Shape: {df.shape}")
                         found_any = True
@@ -171,7 +171,6 @@ def manager(config: ConfigDict, bools: BoolsDict, signals: List[SignalDict], out
     optima_path = output_paths.get('optima')
     fourier_path = output_paths.get('fourier')
 
-
     # --- Iterate Through Signals ---
     for signal_data in signals:
         signal_name = signal_data.get('name')
@@ -192,7 +191,7 @@ def manager(config: ConfigDict, bools: BoolsDict, signals: List[SignalDict], out
         optimal_params: Optional[OptimalParamsDict] = None
         optimal_sim_result: Optional[OptimalSimResultDict] = None
         nyquist_sim_result: Optional[OptimalSimResultDict] = None
-        N_spikes_optimal: Optional[int] = None
+        fft_result: Optional[FFTResultDict] = None
 
         # 1. Find Optimal Parameters (Required for all subsequent steps)
         # Check if *any* analysis is enabled, as they all depend on optima
@@ -215,7 +214,6 @@ def manager(config: ConfigDict, bools: BoolsDict, signals: List[SignalDict], out
             logger.info(f"Skipping Nyquist analysis for {signal_name} (disabled).")
 
         # 3. Run Fourier Analysis (if enabled and optimal sim succeeded)
-        fft_result: Optional[FFTResultDict] = None
         if bools.get('fourier', False):
             if optimal_params and optimal_sim_result and nyquist_sim_result:
                 # The idea is to be able to run Fourier only even if nyquist fails, to just need optimal sim result. But i haven't developed this yet
@@ -225,6 +223,7 @@ def manager(config: ConfigDict, bools: BoolsDict, signals: List[SignalDict], out
                 logger.warning(f"Skipping Fourier analysis for {signal_name}: Required optimal simulation results not available (simulation likely failed or was skipped).")
         else:
             logger.info(f"Skipping Fourier analysis for {signal_name} (disabled).")
+
 
     all_results = {
         "optimal_params": all_optimal_params,

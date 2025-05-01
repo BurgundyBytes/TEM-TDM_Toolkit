@@ -301,18 +301,18 @@ def load_experiment_signals(file_path: str, file_name: str, config: Dict[str, An
 
 
 
-# def main():
-#     tf, uf, fmaxf = generate_multifreq_signal([11,3,11], [1,1,1], 5, 1000)
-#     ts, us, fmaxs = generate_sum_of_sines([6, 20, 13], [0.5, 0.3, 0.15], 1, 20000)
+def main():
+    tf, uf, fmaxf = generate_multifreq_signal([6, 20, 13], [1,1,1], 5, 1000)
+    ts, us, fmaxs = generate_sum_of_sines([6, 20, 13], [0.5, 0.3, 0.15], 1, 20000)
 
-#     import os
-#     import sys
-#     src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-#     sys.path.insert(0, src_path)
-#     import src.utilities.plotting as plotting
-#     plotting.plot_signal(tf, uf, title="Multi-Frequency Signal", filepath="multifreq_signal.png")
-#     plotting.plot_signal(ts, us, title="Sum of Sines Signal", filepath="sum_of_sines_signal.png")
+    import os
+    import sys
+    src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    sys.path.insert(0, src_path)
+    import src.utilities.plotting as plotting
+    plotting.plot_signal(tf, uf, title="Multi-Frequency Signal", filepath="multifreq_signal.png")
+    plotting.plot_signal(ts, us, title="Sum of Sines Signal", filepath="sum_of_sines_signal.png")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

@@ -31,7 +31,10 @@ def _filter_and_select(df: pd.DataFrame, id_cols: List[str], error_col: str = ut
     Helper to filter DataFrame and select the best row based on minimizing the median error within thresholds.
     Ensures relevant columns are numeric before filtering and sorting.
 
+    The number of candidates is now hardcoded to 10 for simplicity. Could be made customized if needed.
     '''
+    # Hardcoded number of candidates to keep for filtering
+    n_candidates: int = 10
     # Define all columns needed for processing and output
     metric_cols = list(set([error_col, time_col, utils.COL_MAX_ERR, utils.COL_NRMSE_STD, utils.COL_N_SPIKES])) 
     required_cols = list(set(id_cols + metric_cols)) # All columns that must be present
@@ -89,7 +92,9 @@ def _filter_and_select(df: pd.DataFrame, id_cols: List[str], error_col: str = ut
 
             # Sort by primary criterion (error) ascending, then tie-breaker (time) ascending
             df_sorted = df_filtered.sort_values(by=valid_sort_cols, ascending=[True, True])
-            best_row = df_sorted.iloc[0]
+            top_n_candidates = df_sorted.head(n_candidates) # Keep only top candidates
+            top_n_candidates_sorted = top_n_candidates.sort_values(by=utils.COL_N_SPIKES, ascending=True)
+            best_row = top_n_candidates.iloc[0]
             # Log relevant info - ensure columns exist before accessing
             log_err = best_row.get(error_col, 'N/A')
             log_time = best_row.get(time_col, 'N/A')
@@ -99,7 +104,8 @@ def _filter_and_select(df: pd.DataFrame, id_cols: List[str], error_col: str = ut
             logger.info(f"\tSelected best candidate meeting thresholds: "
                         f"{utils.COL_FS}={log_fs}, {utils.COL_D_NORM}={log_dn}, "
                         f"{error_col}={log_err:.3e}, {time_col}={log_time:.3f}s")
-            return best_row
+
+            return best_row, top_n_candidates_sorted
 
     except KeyError as ke:
         # This might still occur if a required column was missing initially
@@ -110,14 +116,14 @@ def _filter_and_select(df: pd.DataFrame, id_cols: List[str], error_col: str = ut
         return None
 
 
-def _find_optimal_conditions(df_freq: Optional[pd.DataFrame], df_delta: Optional[pd.DataFrame], df_2d: Optional[pd.DataFrame], error_threshold: Optional[float] = None, time_threshold: Optional[float] = None, config: Optional[ConfigDict] = None) -> Optional[OptimalParamsDict]:
+def _find_optimal_conditions(df_bias: Optional[pd.DataFrame], df_delta: Optional[pd.DataFrame], df_2d: Optional[pd.DataFrame], error_threshold: Optional[float] = None, time_threshold: Optional[float] = None, config: Optional[ConfigDict] = None) -> Optional[OptimalParamsDict]:
     '''
     Finds optimal operating conditions (fs, d_norm) from parametric study summary results.
 
     Inputs
     ------
-    - df_freq: pd.DataFrame
-        DataFrame containing results from 1D frequency sweep.
+    - df_bias: pd.DataFrame
+        DataFrame containing results from 1D bias sweep.
     - df_delta: pd.DataFrame
         DataFrame containing results from 1D delta sweep.
     - df_2d: pd.DataFrame
@@ -147,58 +153,58 @@ def _find_optimal_conditions(df_freq: Optional[pd.DataFrame], df_delta: Optional
     # --- Priority 1: 2D Sweep ---
     if df_2d is not None and not df_2d.empty:
         logger.info("Analyzing 2D parametric sweep (Highest Priority)...")
-        optimal_candidate_row = _filter_and_select(df_2d, id_cols=[utils.COL_FS, utils.COL_D_NORM],
+        optimal_candidate_row, optimal_candidates = _filter_and_select(df_2d, id_cols=[utils.COL_B, utils.COL_D_NORM],
                                                     error_threshold=error_threshold, time_threshold=time_threshold)
         if optimal_candidate_row is not None:
-            source_df_type = "freq_delta"
+            source_df_type = "bias_delta"
             logger.info("Found suitable candidate from 2D sweep.")
         else:
             logger.info("No suitable candidate found meeting criteria in 2D sweep.") 
     else:
         logger.info("2D sweep data not available or empty. Checking 1D sweeps...")
 
-    # --- Priority 2: 1D Frequency Sweep (if 2D failed) ---
-    if optimal_candidate_row is None and df_freq is not None and not df_freq.empty:
-        logger.info("Analyzing 1D Frequency sweep (Priority 2)...")
+    # --- Priority 2: 1D Bias Sweep (if 2D failed) ---
+    if optimal_candidate_row is None and df_bias is not None and not df_bias.empty:
+        logger.info("Analyzing 1D Bias sweep (Priority 2)...")
         default_d_norm = config.get('Default Delta')
         if default_d_norm is None:
-            logger.warning("Cannot fully evaluate 1D Frequency sweep: 'Default Delta' not found in config. Sweep skipped.")
+            logger.warning("Cannot fully evaluate 1D Bias sweep: 'Default Delta' not found in config. Sweep skipped.")
         else:
             try:
-                optimal_candidate_row = _filter_and_select(df_freq, id_cols=[utils.COL_FS, utils.COL_D_NORM],
+                optimal_candidate_row, optimal_candidates = _filter_and_select(df_bias, id_cols=[utils.COL_B, utils.COL_D_NORM],
                                                         error_threshold=error_threshold, time_threshold=time_threshold)
 
                 if optimal_candidate_row is not None:
-                    source_df_type = "freq"
-                    logger.info(f"Found suitable candidate from 1D Frequency sweep (using Default Delta={default_d_norm:.4f}).")
+                    source_df_type = "bias"
+                    logger.info(f"Found suitable candidate from 1D Bias sweep (using Default Delta={default_d_norm:.4f}).")
                 else:
-                    logger.info("No suitable candidate found meeting criteria in 1D Frequency sweep.") 
+                    logger.info("No suitable candidate found meeting criteria in 1D Bias sweep.") 
             except ValueError:
-                logger.error(f"Could not convert 'Default Delta' ({config.get('Default Delta')}) to float. Skipping 1D Frequency sweep.")
+                logger.error(f"Could not convert 'Default Delta' ({config.get('Default Delta')}) to float. Skipping 1D bias sweep.")
             except Exception as e:
-                logger.error(f"Error processing 1D Frequency sweep: {e}", exc_info=True)
+                logger.error(f"Error processing 1D Bias sweep: {e}", exc_info=True)
 
     elif optimal_candidate_row is None: 
-        logger.debug("1D Frequency sweep data not available or empty.") 
+        logger.debug("1D Bias sweep data not available or empty.") 
 
-    # --- Priority 3: 1D Delta Sweep (if 2D and Freq failed) ---
+    # --- Priority 3: 1D Delta Sweep (if 2D and Bias failed) ---
     if optimal_candidate_row is None and df_delta is not None and not df_delta.empty:
         logger.info("Analyzing 1D Delta sweep (Priority 3)...")
-        default_fs = config.get('Default Frequency')
-        if default_fs is None:
-            logger.warning("Cannot fully evaluate 1D Delta sweep: 'Default Frequency' not found in config. Sweep skipped.")
+        default_b = config.get('Default Bias')
+        if default_b is None:
+            logger.warning("Cannot fully evaluate 1D Delta sweep: 'Default Bias' not found in config. Sweep skipped.")
         else:
             try:
-                optimal_candidate_row = _filter_and_select(df_delta, id_cols=[utils.COL_FS, utils.COL_D_NORM],
+                optimal_candidate_row, optimal_candidates = _filter_and_select(df_delta, id_cols=[utils.COL_FS, utils.COL_D_NORM],
                                                         error_threshold=error_threshold, time_threshold=time_threshold)
 
                 if optimal_candidate_row is not None:
                     source_df_type = "delta"
-                    logger.info(f"Found suitable candidate from 1D Delta sweep (using Default Frequency={default_fs:.1f}).")
+                    logger.info(f"Found suitable candidate from 1D Delta sweep (using Default Bias={default_b:.4f}).")
                 else:
                     logger.info("No suitable candidate found meeting criteria in 1D Delta sweep.")
             except ValueError:
-                logger.error(f"Could not convert 'Default Frequency' ({config.get('Default Frequency')}) to float. Skipping 1D Delta sweep.")
+                logger.error(f"Could not convert 'Default Bias' ({config.get('Default Bias')}) to float. Skipping 1D Delta sweep.")
             except Exception as e:
                 logger.error(f"Error processing 1D Delta sweep: {e}", exc_info=True)
 
@@ -211,7 +217,7 @@ def _find_optimal_conditions(df_freq: Optional[pd.DataFrame], df_delta: Optional
         logger.info(f"Final optimal candidate selected from '{source_df_type}' results.")
         try:
             result_dict: OptimalParamsDict = {
-                utils.COL_FS: optimal_candidate_row[utils.COL_FS],
+                utils.COL_B: optimal_candidate_row[utils.COL_B],
                 utils.COL_D_NORM: optimal_candidate_row[utils.COL_D_NORM],
                 utils.COL_MAX_ERR: optimal_candidate_row[utils.COL_MAX_ERR],
                 utils.COL_MED_ERR: optimal_candidate_row[utils.COL_MED_ERR],
@@ -229,7 +235,7 @@ def _find_optimal_conditions(df_freq: Optional[pd.DataFrame], df_delta: Optional
                     log_items.append(f"{k}={v}") # Fallback if formatting fails
             log_str = "\tFinal Optimal Values: " + ", ".join(log_items)
             logger.info(log_str)
-            return result_dict
+            return result_dict, optimal_candidates
 
         except Exception as format_err:
             logger.error(f"Error formatting optimal results dictionary from row: {optimal_candidate_row.to_dict()}. Error: {format_err}", exc_info=True)
@@ -242,12 +248,12 @@ def _find_optimal_conditions(df_freq: Optional[pd.DataFrame], df_delta: Optional
 def _find_signal_optima_step(study_results_for_signal: Optional[ParametricResultsDict], config: ConfigDict, signal_name: str) -> Optional[OptimalParamsDict]:
     '''
     Finds optimal parameters (fs, d_norm) for one signal based on available parametric summaries.
-    Prioritizes freq_delta > freq > delta studies.
+    Prioritizes bias_delta > bias > delta studies.
     Minimizes median error ('error_median' column assumed) within thresholds.
 
     Inputs
     - study_results_for_signal: dict
-        Dictionary containing DataFrames for 'freq', 'delta', and 'freq_delta' studies.
+        Dictionary containing DataFrames for 'bias', 'delta', and 'bias_delta' studies.
         Each DataFrame should contain the relevant columns for analysis.
     - config: dict
         Configuration dictionary containing thresholds and other parameters.    
@@ -271,19 +277,19 @@ def _find_signal_optima_step(study_results_for_signal: Optional[ParametricResult
         return None
 
     # Extract DataFrames from the input dictionary
-    df_freq = study_results_for_signal.get('freq')
+    df_bias = study_results_for_signal.get('bias')
     df_delta = study_results_for_signal.get('delta')
-    df_2d = study_results_for_signal.get('freq_delta')
+    df_2d = study_results_for_signal.get('bias_delta')
 
     try:
         error_thresh = config.get('Error threshold')
         time_thresh = config.get('Elapsed time threshold')
 
-        optimal_params = _find_optimal_conditions(df_freq, df_delta, df_2d, error_thresh, time_thresh, config)
+        optimal_params, optimal_candidates = _find_optimal_conditions(df_bias, df_delta, df_2d, error_thresh, time_thresh, config)
 
         if optimal_params:
-            logger.info(f"\tOptimal conditions found: fs={optimal_params.get(utils.COL_FS, 'N/A')}, d_norm={optimal_params.get(utils.COL_D_NORM, 'N/A')}")
-            return optimal_params
+            logger.info(f"\tOptimal conditions found: b={optimal_params.get(utils.COL_B, 'N/A')}, d_norm={optimal_params.get(utils.COL_D_NORM, 'N/A')}")
+            return optimal_params, optimal_candidates
         else:
             logger.warning(f"\tNo suitable optimal conditions found for {signal_name} meeting criteria.")
             return None
@@ -336,9 +342,9 @@ def _simulate_and_save_optimal_step(signal_data: SignalDict, optimal_params: Opt
         t = signal_data.get('t')
         u = signal_data.get('u')
         dur = signal_data.get('dur')
-        b = signal_data.get('b')
         dte = signal_data.get('dte')
-        fs = optimal_params.get(utils.COL_FS)
+        fs = signal_data.get('Default Frequency')
+        b = optimal_params.get(utils.COL_B)
         d_norm = optimal_params.get(utils.COL_D_NORM)
         freq_max = signal_data.get('freq_max') 
 
@@ -460,7 +466,7 @@ def _simulate_and_save_optimal_step(signal_data: SignalDict, optimal_params: Opt
         # --- Plotting (Optional) ---
         if bools.get('plots'):
             logger.info(f"\tPlotting optimal results for {signal_name}...")
-            plot_title = f"Optimal {signal_name} (fs={fs:.1f}, d={d_norm:.4f})"
+            plot_title = f"Optimal {signal_name} (b={b:.4f}, d={d_norm:.4f})"
             plot_base = f"optimal_{signal_name}"
 
             # Decide what to plot based on valid stable region data
@@ -511,10 +517,15 @@ def perform_optima_study(signal_data: SignalDict, results_for_this_signal: Optio
 
     # 1. Find Optimal Parameters    
     optimal_params: Optional[OptimalParamsDict] = None
-    optimal_params = _find_signal_optima_step(results_for_this_signal, config, signal_name)
+    optimal_params, optimal_candidates = _find_signal_optima_step(results_for_this_signal, config, signal_name)
     if optimal_params is None:
         logger.warning(f"Skipping optimal simulation for {signal_name}: No suitable parameters found.")
         return None, None
+    if optimal_candidates is not None:
+        base_filename = f"optimal_candidates_{signal_name}"
+        utils.store_df_to_excel(optimal_candidates, optima_path, base_filename)
+        logger.info(f"Optimal candidates for {signal_name} saved to {base_filename}.")
+
     
     # 2. Simulate with Optimal Parameters (if optima found and needed)
     optimal_sim_result: Optional[OptimalSimResultDict] = None

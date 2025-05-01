@@ -1,14 +1,11 @@
 # TEM-TDM Toolkit
 This Python toolkit is designed to assess the validity and performance of Asynchronous Sigma-Delta Modulators (ASDM) when used as Time Encoding Machines (TEM) and Time Decoding Machines (TDM), particularly for complex or turbulent signals. 
 
-It implements and analyzes the concepts presented in the paper **[Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf)** by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit specifically allows for studying the *normalized equivalent circuit* proposed in the paper, focusing on how the **normalized threshold (`d_norm`)** affects signal recovery. 
+It implements and analyzes the concepts presented in the paper [Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf) by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit specifically allows for studying the *normalized equivalent circuit* proposed in the paper, focusing on how the **normalized threshold (`d_norm`)** affects signal recovery. 
 
 ![Normalized TEM Equivalent Circuit Diagram](docs/resources/ASDM_Equivalent_Circuit.PNG)
 
 The core idea tested is that by carefully selecting the normalized threshold `d_norm` (related to the ASDM's hysteresis (`delta`, bias `b` and gain `k`), a bandlimited signal can be efficiently represented by asynchronous spike times and recovered with high fidelity, potentially outperforming uniform sampling at equivalent data rates under certain conditions.
-
-> [!NOTE]
-> **Developer's Note:** This toolkit evolved alongside my understanding for my final degree project. While learning, I built features for parametric studies on sampling frequency (`fs`) and both `fs`/`d_norm`. Later, I realized that for this asynchronous ASDM, only the study on the normalized threshold (d_norm) is truly meaningful theoretically. The other studies still work because the code is flexible, but the main focus now should be the `d_norm` results. I've kept the extra study code because it was already built and represents the project's maturity process. Future analysis using this tool should prioritize the `d_norm` study.
 
 ## Core Concepts 
 
@@ -30,10 +27,9 @@ The core idea tested is that by carefully selecting the normalized threshold `d_
 
 ```plaintext
 ├── docs                     # Documentation and diagrams
-│   ├── managers             # Managers' documentation
-│   ├── functionalities      # Core functions' documentation
-│   ├── resources            # Resources accessible to the toolkit: images, .pfd, ...
-│   └── project.md           # Toolkit overview
+│   ├── workflows            # Mermaid diagrams for workflows
+│   ├── functionalities      # Mermaid diagrams for core functions
+│   └── project_structure.md # Visualization of the structure
 ├── src                      # Source code
 │   ├── controllers          # Handlers for configuration, input, studies, results
 │   │   ├── configuration.py
@@ -64,8 +60,7 @@ The core idea tested is that by carefully selecting the normalized threshold `d_
 │   ├── optima               # Results for optimal conditions study
 ├── launcher.py              # Main script to run the toolkit
 ├── config.txt               # Configuration file for specifying runs
-├── requirements.txt         # Python package dependencies
-└── TEM-TDM_Toolkit.ipynb    # Code to be run in Google Colab
+└── requirements.txt         # Python package dependencies
 ```
 
 ## Repository explanation: Manufacturing plant analogy
@@ -125,10 +120,10 @@ Thinking of the TEM-TDM Toolkit as a specialized manufacturing plant for process
 3.  **Activating Workflows (`launcher.py`):** The plant manager (`launcher.py`) reviews the interpreted blueprint and activates one or both of the main workflows as specified:
     *   **Production Line (`Execution Flow`):** If activated, this workflow focuses on *generating* data.
         *   **Receiving/Internal Manufacturing (`input_handler.py`):** This department secures the raw signal, either by loading it from external suppliers (Excel/CSV files in `Input/`) or by manufacturing it internally using standard specifications (`models/input_signal.py`).
-        *   **Production Floor Supervision (`parametric_handler.py`):** This supervisor oversees the running of parametric studies. It instructs the simulation workshop (`parametric/studies.py`) to perform the core encoding and decoding simulations for various parameters (primarily `d_norm`). It uses the quality control lab (`utilities/metrics.py`) to measure performance during production. The results of these simulations (metrics vs. parameters) are considered intermediate goods.
+        *   **Production Floor Supervision (`parametric_handler.py`):** This supervisor oversees the running of parametric studies. It instructs the simulation workshop (`parametric/studies.py`) to perform the core TEM encoding and TDM decoding simulations for various parameters (primarily `d_norm`). It uses the quality control lab (`utilities/metrics.py`) to measure performance during production. The results of these simulations (metrics vs. parameters) are considered intermediate goods.
     *   **Analysis & Reporting (`Results Flow`):** If activated, this workflow focuses on *analyzing* data to produce final insights.
         *   **Analysis Department Management (`results_handler.py`):** This manager coordinates the post-processing analysis. It retrieves the necessary intermediate goods (parametric study results), *either* fresh from the production line (if `Execution Flow` just ran) *or* from previous runs stored in the warehouse (`Output/`). It then dispatches tasks to specialized analysis teams:
-            *   Optimization Team (`analysis/optima.py`): Finds the best operating parameters (`d_norm`) based on criteria from the blueprint (if any thresholds were given in the elapsed time on the encoding/decoding process or the median error).
+            *   Optimization Team (`analysis/optima.py`): Finds the best operating parameters (`d_norm`) based on criteria from the blueprint (if any rhreshos where given in the elapsed time on the encoding/decoding process or the median error).
             *   Nyquist Benchmarking Team (`analysis/nyquist.py`): Compares ASDM performance against traditional uniform sampling.
             *   Fourier Benchmarking Team (`analysis/fourier.py`): Analyzes the signal's fidelity in the frequency domain.
 
@@ -144,7 +139,6 @@ Thinking of the TEM-TDM Toolkit as a specialized manufacturing plant for process
     *   Process Logs: Detailed text logs documenting each run.
 
 6.  **Shipping:** The plant delivers the final requested outputs (plots, data summaries, optimal parameters) as specified in the original blueprint (`config.txt`) and stored in the `Output/` warehouse.
-
 
 ## Installation
 
@@ -216,17 +210,3 @@ This file uses a simple `Key: Value` format, with comments denoted by `#`. Befor
 
 **Refer to the detailed comments within the `config.txt` file itself for explanations of each specific parameter.**
 
-
-## A Note on Project Evolution and Scope
-
-This toolkit represents a significant part of my final degree project (TFG), but it wasn't the initial plan. My degree project involves both understanding the theory behind ASDM encoding/decoding for turbulent signals (based on the Bionet group's research) and conducting experiments at INTA to characterize turbulence using a sweeping jet actuator.
-
-Early on, I realized that simply pursuing the theoretical and experimental parts separately wouldn't be as impactful or satisfying. I wanted to actively connect them and create something tangible and meaningful. This led to the idea of building this toolkit – refactoring my initial simulation codes into a flexible and scalable tool.
-
-**This refactoring effort, and the design philosophy behind it, wouldn't have been possible without the experiences gained at my workplace and the invaluable guidance of Fernando.** The constant need to automate processes requires to identify patterns, group functions into logical tasks and even workflows. He fostered a deeper appreciation for Python as a versatile tool – a true canvas for building complex solutions. It is a true skill to abstract technical details to build flexible systems, which he is a master of. Surrounded by this rich environment, the tool could only be born. This experience directly inspired the concept of structuring this toolkit like a "manufacturing plant," with distinct workflows, managers, and specialized units.
-
-As the workload from my cousework progressed and complexity of the analysis increased, I needed an efficient way to run various simulations, manage data interactions, and store results without getting bogged down. This toolkit became the bridge, allowing me to test theoretical concepts (like the ASDM parameters) and potentially apply them to experimental data contexts later.
-
-This evolution is also reflected in the available parametric studies. As my understanding deepened, it became clear that for analyzing this *asynchronous* ASDM, varying the **normalized threshold (`d_norm`)** is the most theoretically relevant approach. However, the toolkit retains the capability for frequency (`fs`) and biparametric (`fs`, `d_norm`) sweeps, which were part of the initial exploration and the drive to build a flexible framework. While these `fs`-related studies remain functional, future analysis using this tool should prioritize the insights gained from the `d_norm` study.
-
-Building this toolkit has been an invaluable learning experience, significantly enhancing my understanding of the underlying theory. Although it emerged from the specific needs of my degree project, I believe its structured approach could be beneficial to others in the research department or anyone undertaking similar signal-processing explorations. **I hope this repository serves as a useful example and a building block for bigger and better things.**
