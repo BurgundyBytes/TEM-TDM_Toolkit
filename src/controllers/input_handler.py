@@ -42,8 +42,7 @@ def generate_input_signal(config: ConfigDict) -> InputSignals:
     try:
         gen_type = config['Generated Input Type']
         fs = config['Signal Sampling Rate']
-        dur = config['Signal Duration']
-        b = config.get('Encoder Bias', 0.0)
+        dur = config['Signal Duration'] 
         dte = config.get('Encoder Resolution', 0.0)
         logger.info(f"Generating signal type: {gen_type} (Fs={fs} Hz, Dur={dur} s)")
 
@@ -55,12 +54,14 @@ def generate_input_signal(config: ConfigDict) -> InputSignals:
         if gen_type == 'multisin':
             freqs = config['Frequencies']
             amps = config['Amplitudes']
+            c = sum(amps)
             logger.debug(f"Generating multisin with Freqs={freqs}, Amps={amps}")
             t, u, freq_max = input_signal.generate_sum_of_sines(freqs, amps, dur, fs)
 
         elif gen_type == 'multifreq':
             freqs = config['Frequencies']
             amps = config['Amplitudes']
+            c = sum(amps)
             logger.debug(f"Generating multifreq with Freqs={freqs}, Amps={amps}")
             t, u, freq_max = input_signal.generate_multifreq_signal(freqs, amps, dur, fs)
 
@@ -82,7 +83,7 @@ def generate_input_signal(config: ConfigDict) -> InputSignals:
                 'name': signal_name,
                 'fs': fs,
                 'dur': dur,
-                'b': b,
+                'c': c,
                 'dte': dte,
                 'source': 'generated' # hardcoded for now -> to be changed later, when excel import is fully developed
             })

@@ -5,6 +5,7 @@ numpy
 scipy
 
 # Data handling and I/O
+PyYAML
 pandas
 openpyxl  # Required by pandas for .xlsx support
 

@@ -52,7 +52,7 @@ def log_study_header(filepath: str, study_type: str, param_ranges: Union[np.ndar
     if isinstance(param_ranges, dict): # For biparametric
         for key, values in param_ranges.items():
             param_label = key # Default
-            if key == 'freqs': param_label = utils.COL_FS
+            if key == 'bias': param_label = utils.COL_B
             elif key == 'deltas': param_label = utils.COL_D_NORM
             if len(values) > 0:
                  header.append(f"\t{param_label}: Min={np.min(values)}, Max={np.max(values)}, N={len(values)}")
@@ -61,7 +61,7 @@ def log_study_header(filepath: str, study_type: str, param_ranges: Union[np.ndar
     elif isinstance(param_ranges, np.ndarray): # For 1D studies
         param_label = "Values" # Default label if not identifiable
         # Try to identify based on fixed params (less robust)
-        if utils.COL_FS not in fixed_params: param_label = utils.COL_FS
+        if utils.COL_B not in fixed_params: param_label = utils.COL_B
         elif utils.COL_D_NORM not in fixed_params: param_label = utils.COL_D_NORM
 
         if len(param_ranges) > 0:
@@ -78,7 +78,7 @@ def log_study_header(filepath: str, study_type: str, param_ranges: Union[np.ndar
 def log_parametric_run(filepath: str, metrics_dict: Dict[str, Any]) -> None:
     '''
     Appends formatted metrics for a single parametric run to a text log file.
-    Assumes parameters like fs, d_norm are already included in metrics_dict.
+    Assumes parameters like bias, d_norm are already included in metrics_dict.
     '''
     if not filepath:
         logger.warning("No filepath provided for run logging.")
@@ -91,7 +91,7 @@ def log_parametric_run(filepath: str, metrics_dict: Dict[str, Any]) -> None:
     log_lines.append("--- Run Start ---")
 
     # Log Parameters (using utils constants)
-    params_keys = [utils.COL_FS, utils.COL_D_NORM, utils.COL_B, utils.COL_DTE]
+    params_keys = [utils.COL_B, utils.COL_D_NORM, utils.COL_FS, utils.COL_DTE]
     logged_params = False
     log_lines.append("\tParameters:")
     for key in params_keys:

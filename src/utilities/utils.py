@@ -95,6 +95,57 @@ def get_stable_region(time: np.ndarray, stable_percentage: float = 0.8) -> Tuple
         logger.warning(f"(get_stable_region): Error calculating stable region: {e}. Returning full range.")
         return 0, n
 
+def estimate_bias_range(c: float = 1.0):
+    '''
+    Estimates a reasonable range of encoder bias values 'b' to test for a given max signal amplitude 'c'.
+
+    Inputs
+    ------
+    c : float
+        Maximum absolute amplitude of the input signal (|x(t)|_max).
+
+    Outputs
+    -------
+    bias_values: np.ndarray
+        A NumPy array of bias values to test, or None if input parameters are invalid
+        or result in an empty range.
+
+    Raises
+    ------
+    - ValueError: If input parameters are invalid (e.g., start_factor <= 1.0, step <= 0).
+    - TypeError: If c is not a valid number.
+    '''
+    # --- Hardcoded Defaults ---
+    start_factor: float = 1.01
+    end_value: float = 2.0
+    step: float = 0.01
+
+    # --- Input Validation ---
+    if not isinstance(c, (int, float)) or c < 0:
+        logger.error(f"Invalid input 'c' ({c}). Must be a non-negative number.")
+        return None
+
+    # --- Calculate Start and End ---
+    b_start = start_factor * c
+
+    # Check if start is already beyond the fixed end
+    if b_start >= end_value:
+        logger.warning(f"Calculated start bias ({b_start:.4g}) is >= fixed end value ({end_value:.4g}). No valid range possible.")
+        return None
+    try:
+        bias_values = np.arange(b_start, end_value + step * 0.5, step)
+
+        if bias_values.size == 0:
+            logger.warning(f"Generated bias range is empty (start={b_start:.4g}, end={end_value:.4g}, step={step:.4g}).")
+            return None
+
+        logger.info(f"Estimated bias range: Start={bias_values[0]:.4g}, End={bias_values[-1]:.4g}, Step={step:.4g}, NumPoints={len(bias_values)}")
+        return bias_values
+
+    except Exception as e:
+        logger.error(f"Unexpected error generating bias range: {e}", exc_info=True)
+        return None
+
 
 def store_df_to_excel(df: pd.DataFrame, output_dir: str, filename_no_ext: str) -> None:
     '''

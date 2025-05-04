@@ -42,7 +42,7 @@ COLOR_SAMPLES = COLOR_OPTIMAL_ASDM # Use same color as reconstruction line
 COLOR_SPIKES = '#ff7f0e'        # Orange (tab:orange)
 
 # --- Use constants from utils ---
-COL_FS = utils.COL_FS
+COL_B = utils.COL_B
 COL_D_NORM = utils.COL_D_NORM
 COL_MAX_ERR = utils.COL_MAX_ERR
 COL_MED_ERR = utils.COL_MED_ERR
@@ -205,7 +205,10 @@ def plot_with_spikes(time: np.ndarray, original_signal: np.ndarray, reconstructe
 
 # --- Parametric Study Plots ---
 def plot_parametric(df: pd.DataFrame, study_id: str, title: str, filepath: Optional[str]) -> None:
-    '''Plots summary metrics from a 1D parametric study (e.g., vs Fs or vs Delta).'''
+    '''
+    Plots summary metrics from a 1D parametric study (e.g., vs Bias or vs Delta).
+    Hardcoded plots for now (could be customized later). Assembled as 2x3 plots
+    '''
     # Define metrics and their plot properties
     # Using utils constants as keys where possible
     plot_config = {
@@ -213,19 +216,20 @@ def plot_parametric(df: pd.DataFrame, study_id: str, title: str, filepath: Optio
         utils.COL_MAX_ERR: {'label': "Max Error", 'scale': 'log'},
         utils.COL_MED_ERR: {'label': "Median Error", 'scale': 'log'}, 
         utils.COL_NRMSE_STD: {'label': "Normalized RMS Error", 'scale': 'log'},
+        utils.COL_R2: {'label': "R^2", 'scale': 'linear'},
         utils.COL_TIME: {'label': "Elapsed Time (s)", 'scale': 'linear'} 
     }
     metrics_to_plot = list(plot_config.keys()) 
 
     # Determine x-axis based on study_id
-    if study_id.lower() == "pf":
-        x_data_key = utils.COL_FS
-        x_label = f"{x_data_key} (Hz)" 
+    if study_id.lower() == "pb":
+        x_data_key = utils.COL_B
+        x_label = f"{x_data_key}" 
     elif study_id.lower() == "pd":
         x_data_key = utils.COL_D_NORM
         x_label = f"{x_data_key}"
     else:
-        logger.error(f"plot_parametric: Invalid study_id '{study_id}'. Must be 'freq' or 'delta'. Skipping plot.")
+        logger.error(f"plot_parametric: Invalid study_id '{study_id}'. Must be 'bias' or 'delta'. Skipping plot.")
         return
 
     # Input validation
@@ -256,20 +260,26 @@ def plot_parametric(df: pd.DataFrame, study_id: str, title: str, filepath: Optio
         return
 
     # Plotting
-    num_plots = len(metrics_to_plot)
+    nrows = 2 # hardcoded for now
+    ncols = 3 # hardcoded for now
     fig, axes = None, None
+    if len(metrics_to_plot) != nrows * ncols:
+            logger.error(f"plot_parametric: Mismatch between metrics to plot ({len(metrics_to_plot)}) and grid size ({nrows}x{ncols}). Skipping plot.")
+            return
     try:
         with plt.style.context(_STYLE_NAME_TO_USE):
-            fig, axes = plt.subplots(1, num_plots, figsize=(5 * num_plots, 4), squeeze=False)
-            axes = axes.flatten() # Ensure axes is always iterable
+            fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 5, nrows * 4.5), squeeze=False)
 
             for i, metric_key in enumerate(metrics_to_plot):
+                # Calculate row and column index for the 2D axes array
+                row = i // ncols # Integer division gives the row index (0 or 1)
+                col = i % ncols  # Modulo gives the column index (0, 1, or 2)
+                ax = axes[row, col]
                 cfg = plot_config[metric_key]
                 y_data = df_plot[metric_key].to_numpy()
-                ax = axes[i]
 
                 ax.plot(x_data, y_data, marker='.', linestyle='-', linewidth=BASE_LINEWIDTH*0.8, markersize=BASE_MARKERSIZE)
-                ax.set_title(f"{cfg['label']} vs {x_label.split(' ')[0]}") # Short title
+                ax.set_title(f"{cfg['label']}") # Short title
                 ax.set_xlabel(x_label)
                 ax.set_ylabel(cfg['label'])
 
@@ -289,7 +299,7 @@ def plot_parametric(df: pd.DataFrame, study_id: str, title: str, filepath: Optio
                 ax.grid(True, which='both' if current_use_log else 'major', linestyle=GRID_LINESTYLE, alpha=GRID_ALPHA)
 
             fig.suptitle(title, fontsize=14)
-            fig.tight_layout(rect=[0, 0, 1, 0.93])
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     except Exception as e:
         logger.error(f"Error generating plot_parametric '{title}': {e}", exc_info=True)
@@ -301,13 +311,15 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
     '''Plots results of the bi-parametric study using contour plots.'''
     # Define metrics and their plot properties
     plot_config = {
-        utils.COL_N_SPIKES: {'title': "Encoded Length", 'label': "Num Spikes", 'cmap': 'viridis', 'norm': None},
-        utils.COL_MAX_ERR: {'title': "Max Error", 'label': "Max Error", 'cmap': 'magma', 'norm': LogNorm()},
-        utils.COL_MED_ERR: {'title': "Median Error", 'label': "Median Error", 'cmap': 'magma', 'norm': LogNorm()},
-        utils.COL_TIME: {'title': "Elapsed Time", 'label': "Time (s)", 'cmap': 'cividis', 'norm': None} 
+        utils.COL_N_SPIKES: {'label': "Encoded Length", 'scale': 'linear'},
+        utils.COL_MAX_ERR: {'label': "Max Error", 'scale': 'log'},
+        utils.COL_MED_ERR: {'label': "Median Error", 'scale': 'log'}, 
+        utils.COL_NRMSE_STD: {'label': "Normalized RMS Error", 'scale': 'log'},
+        utils.COL_R2: {'label': "R^2", 'scale': 'linear'},
+        utils.COL_TIME: {'label': "Elapsed Time (s)", 'scale': 'linear'} 
     }
-    metrics_to_plot = list(plot_config.keys())
-    required_columns = [utils.COL_FS, utils.COL_D_NORM] + metrics_to_plot
+    metrics_to_plot = list(plot_config.keys()) 
+    required_columns = [utils.COL_B, utils.COL_D_NORM] + metrics_to_plot
 
     # Input validation
     if df is None or df.empty:
@@ -320,7 +332,7 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
 
     # Data preparation (pivoting)
     pivot_tables = {}
-    FS, DELTA = None, None
+    B, DELTA = None, None
     try:
         df_plot = df[required_columns].copy()
         for col in required_columns: # Ensure numeric types before pivoting
@@ -333,7 +345,7 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
 
         for metric in metrics_to_plot:
             try:
-                pivot_tables[metric] = df_plot.pivot_table(index=COL_D_NORM, columns=COL_FS, values=metric)
+                pivot_tables[metric] = df_plot.pivot_table(index=utils.COL_D_NORM, columns=utils.COL_B, values=metric)
             except Exception as pivot_err:
                 logger.error(f"Error pivoting data for metric '{metric}' in '{title}': {pivot_err}. Skipping plot for this metric.")
 
@@ -343,13 +355,13 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
 
         first_metric = next(iter(pivot_tables))
         delta_values = pivot_tables[first_metric].index.to_numpy()
-        fs_values = pivot_tables[first_metric].columns.to_numpy()
+        b_values = pivot_tables[first_metric].columns.to_numpy()
 
-        if len(delta_values) < 2 or len(fs_values) < 2:
-            logger.warning(f"plot_biparametric: Need >= 2 unique delta/fs values after pivoting for '{title}'. Skipping contour plot.")
+        if len(delta_values) < 2 or len(b_values) < 2:
+            logger.warning(f"plot_biparametric: Need >= 2 unique delta/bias values after pivoting for '{title}'. Skipping contour plot.")
             return
 
-        FS, DELTA = np.meshgrid(fs_values, delta_values)
+        B, DELTA = np.meshgrid(b_values, delta_values)
 
     except Exception as e:
         logger.error(f"Error preparing data for plot_biparametric '{title}': {e}. Skipping plot.", exc_info=True)
@@ -395,12 +407,12 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
                         ax.set_title(f"{cfg['title']}\n(No valid data)")
                     else:
                         try:
-                            contour = ax.contourf(FS, DELTA, data, cmap=cfg['cmap'], norm=norm, levels=20, antialiased=True)
+                            contour = ax.contourf(B, DELTA, data, cmap=cfg['cmap'], norm=norm, levels=20, antialiased=True)
                             cbar = fig.colorbar(contour, ax=ax, label=cfg['label'])
                             cbar.ax.tick_params(labelsize='small')
                             # Add contour lines for clarity
                             try: # Contour lines might fail on some data
-                                contour_lines = ax.contour(FS, DELTA, data, colors='white', linewidths=0.5, levels=10, norm=norm, antialiased=True)
+                                contour_lines = ax.contour(B, DELTA, data, colors='white', linewidths=0.5, levels=10, norm=norm, antialiased=True)
                             except ValueError: pass # Ignore if contour lines fail
                         except Exception as contour_err:
                             logger.error(f"\tError generating contour plot for '{metric_key}' ({title}): {contour_err}", exc_info=False)
@@ -408,7 +420,7 @@ def plot_biparametric(df: pd.DataFrame, title: str, filepath: Optional[str]) -> 
 
                     ax.set_xscale("log")
                     ax.set_yscale("log")
-                    ax.set_xlabel(f"{utils.COL_FS}")
+                    ax.set_xlabel(f"{utils.COL_B}")
                     ax.set_ylabel(f"{utils.COL_D_NORM}")
                     if ax.get_title() == "": 
                         ax.set_title(cfg['title'])

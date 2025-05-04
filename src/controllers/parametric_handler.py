@@ -29,7 +29,7 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
     Run the configured parametric studies for each input signal.
     Calculates stable region indices once per signal and passes them down.
 
-    Each study type (frequency, delta, biparametric) is run if the corresponding output path is provided.
+    Each study type (bias, delta, biparametric) is run if the corresponding output path is provided.
     The results are aggregated in a dictionary, which is returned.
 
     Inputs
@@ -57,11 +57,11 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
     '''
     all_results: ParametricResultsDict = {}
 
-    run_freq_study = output_paths.get('param_freq') is not None
+    run_bias_study = output_paths.get('param_bias') is not None
     run_delta_study = output_paths.get('param_delta') is not None
     run_biparam_study = output_paths.get('biparametric') is not None
 
-    if not (run_freq_study or run_delta_study or run_biparam_study):
+    if not (run_bias_study or run_delta_study or run_biparam_study):
         logger.warning("No parametric studies configured (no output folders enabled/created).")
         return None
 
@@ -71,7 +71,7 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
         t = signal_data.get('t')
         u = signal_data.get('u')
         dur = signal_data.get('dur')
-        b = signal_data.get('b', 0.0)
+        c = signal_data.get('c')
         dte = signal_data.get('dte', 0.0)
         freq_max = signal_data.get('freq_max', 0.0)
 
@@ -85,6 +85,8 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
             stable_percentage = config.get('Stable Region Percentage', 0.9)
             logger.debug(f"Using stable region percentage: {stable_percentage:.2f}")
             start_idx, end_idx = utils.get_stable_region(t, stable_percentage)
+            bias = utils.estimate_bias_range(c)
+
             # Check if get_stable_region returned fallback (0, len(t)) due to error/short signal
             if end_idx == len(t) and start_idx == 0 and len(t)>1: # Avoid trigger on len=1 case
                 logger.info(f"  Stable region covers full signal [{start_idx}:{end_idx}].")
@@ -99,27 +101,30 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
         current_signal_results: SignalResultsDict = {}
 
         # --- Call specific study runners, passing indices ---
-        if run_freq_study:
-            logger.info(f"\tRunning Frequency study for {signal_name}...")
+        if run_bias_study:
+            logger.info(f"\tRunning Bias study for {signal_name}...")
             try:
-                df_freq = run_frequency(config, u, t, dur, b, dte, freq_max,
+                df_bias = run_bias(config, u, t, dur, bias, dte, freq_max,
                                         start_idx, end_idx,
-                                        bools, signal_name, output_paths['param_freq'])
-                if df_freq is not None and not df_freq.empty:
-                    current_signal_results["freq"] = df_freq
-                    logger.info(f"\tFrequency study for {signal_name} completed.")
+                                        bools, signal_name, output_paths['param_bias'])
+                if df_bias is not None and not df_bias.empty:
+                    current_signal_results["bias"] = df_bias
+                    logger.info(f"\tBias study for {signal_name} completed.")
 
                     if bools.get('plots', False):
-                        plotting.plot_parametric(df_freq, 'PF', "Frequency Study Summary", output_paths['param_freq'])
+                        filename = f"param_bias_summary_{signal_name}.png"
+                        file_path = os.path.join(output_paths['param_bias'], filename)
+                        plotting.plot_parametric(df_bias, 'PB', "Bias Study Summary", file_path)
                 else:
-                    logger.warning(f"\tFrequency study for {signal_name} did not return valid results.")
+                    logger.warning(f"\tBias study for {signal_name} did not return valid results.")
             except Exception as e:
-                logger.error(f"\tUnhandled exception during Frequency study run for {signal_name}", exc_info=True)
+                logger.error(f"\tUnhandled exception during Bias study run for {signal_name}", exc_info=True)
 
 
         if run_delta_study:
             logger.info(f"\tRunning Delta study for {signal_name}...")
             try:
+                b = config.get('Default Bias')
                 df_delta = run_delta(config, u, t, dur, b, dte, freq_max,
                                     start_idx, end_idx, 
                                     bools, signal_name, output_paths['param_delta'])
@@ -128,7 +133,9 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
                     logger.info(f"\tDelta study for {signal_name} completed.")
 
                     if bools.get('plots', False):
-                        plotting.plot_parametric(df_delta, 'PD', "Delta Study Summary", output_paths['param_delta'])
+                        filename = f"param_delta_summary_{signal_name}.png"
+                        file_path = os.path.join(output_paths['param_delta'], filename)
+                        plotting.plot_parametric(df_delta, 'PD', "Delta Study Summary", file_path)
                 else:
                     logger.warning(f"\tDelta study for {signal_name} did not return valid results.")
             except Exception as e:
@@ -138,15 +145,17 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
         if run_biparam_study:
             logger.info(f"\tRunning Biparametric study for {signal_name}...")
             try:
-                df_2d = run_biparametric(config, u, t, dur, b, dte, freq_max,
+                df_2d = run_biparametric(config, u, t, dur, bias, dte, freq_max,
                                         start_idx, end_idx, 
                                         bools, signal_name, output_paths['biparametric'])
                 if df_2d is not None and not df_2d.empty:
-                    current_signal_results["freq_delta"] = df_2d
+                    current_signal_results["bias_delta"] = df_2d
                     logger.info(f"\tBiparametric study for {signal_name} completed.")
 
                     if bools.get('plots', False):
-                        plotting.plot_biparametric(df_2d, "Frequency Study Summary", output_paths['param_freq'])
+                        filename = f"param_biasDelta_summary_{signal_name}.png"
+                        file_path = os.path.join(output_paths['biparametric'], filename)
+                        plotting.plot_biparametric(df_2d, "Biparametric Study Summary", file_path)
                 else:
                     logger.warning(f"\tBiparametric study for {signal_name} did not return valid results.")
             except Exception as e:
@@ -163,58 +172,10 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
 
 
 # Runner functions for each study type
-def run_frequency(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, b: float, dte: float, freq_max: float, start_idx: int, end_idx: int, bools: BoolsDict, signal_name: str, output_dir: Optional[str]) -> Optional[pd.DataFrame]:
-    '''
-    Run the frequency parametric study for a given signal.
-    This function sets up the parameters for the frequency study, including the frequency range and default delta.
-    It then calls the `parametric_freq` function from the `studies` module to perform the actual computation.
-    '''
-    if output_dir is None:
-        logger.debug(f"Output directory for Frequency study ({signal_name}) is None. Skipping run.")
-        return None
-
-    # Get frequency range
-    freq_range_tuple = config.get('Frequency Range')
-    if freq_range_tuple is None:
-        logger.error(f"'Frequency Range' not found or invalid in config for signal {signal_name}.")
-        return None
-    try:
-        start_freq, end_freq, step_freq = freq_range_tuple
-        freqs = np.arange(start_freq, end_freq + step_freq * 0.5, step_freq)
-    except (ValueError, TypeError) as e:
-        logger.error(f"Invalid frequency range format during study setup: {freq_range_tuple}. {e}", exc_info=True)
-        return None
-
-    # Get default delta
-    d_norm = config.get('Default Delta')
-    if d_norm is None:
-        logger.error(f"'Default Delta' not found in config for signal {signal_name}.")
-        return None
-
-    # Define log filename (specific to this study type and signal)
-    log_filename = f'parametric_freq-{signal_name}.txt'
-
-    logger.info(f"\t\tParams: Freq Range={freq_range_tuple}, Default Delta={d_norm:.4f}")
-    logger.info(f"\t\tSaving outputs to: {output_dir}")
-
-    try:
-        df_freq = studies.parametric_freq(
-            u, t, dur, freqs, d_norm, b, dte, freq_max,
-            start_idx, end_idx, 
-            log_filename, output_dir, signal_name,
-            bools.get('logs', False), bools.get('plots', False), bools.get('pickle', False)
-        )
-        return df_freq 
-    except Exception as e:
-        # Catch errors specifically from the call to studies.parametric_freq
-        logger.error(f"ERROR calling studies.parametric_freq for {signal_name}: {e}", exc_info=True)
-        return None
-
-
 def run_delta(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, b: float, dte: float, freq_max: float, start_idx: int, end_idx: int, bools: BoolsDict, signal_name: str, output_dir: Optional[str]) -> Optional[pd.DataFrame]:
     '''
     Run the normalized threshold parametric study for a given signal.
-    This function sets up the parameters for the delta study, including the delta range and default sampling frequency.
+    This function sets up the parameters for the delta study, including the delta range and default encoder bias.
     It then calls the `parametric_delta` function from the `studies` module to perform the actual computation.
     '''
     if output_dir is None:
@@ -241,7 +202,7 @@ def run_delta(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, b: f
 
     log_filename = f'parametric_delta-{signal_name}.txt'
 
-    logger.info(f"\t\tParams: Delta Range={delta_range_tuple}, Default Fs={fs:.1f} Hz")
+    logger.info(f"\t\tParams: Delta Range={delta_range_tuple}, Default Bias={b:.4f} Hz")
     logger.info(f"\t\tSaving outputs to: {output_dir}")
 
     try:
@@ -257,26 +218,54 @@ def run_delta(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, b: f
         return None
 
 
-def run_biparametric(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, b: float, dte: float, freq_max: float, start_idx: int, end_idx: int, bools: BoolsDict, signal_name: str, output_dir: Optional[str]) -> Optional[pd.DataFrame]:
+def run_bias(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, bias: float, dte: float, freq_max: float, start_idx: int, end_idx: int, bools: BoolsDict, signal_name: str, output_dir: Optional[str]) -> Optional[pd.DataFrame]:
+    '''
+    Run the encoder bias parametric study for a given signal.
+    This function sets up the parameters for the bias study, including the bias range and default normalized threshold.
+    It then calls the `parametric_bias` function from the `studies` module to perform the actual computation.
+    '''
+    if output_dir is None:
+        logger.debug(f"Output directory for Bias study ({signal_name}) is None. Skipping run.")
+        return None
+
+    # Get default frequency
+    fs = config.get('Default Frequency')
+    if fs is None:
+        logger.error(f"'Default Frequency' not found in config for signal {signal_name}.")
+        return None
+
+    # Get default normalized threshold
+    d_norm = config.get('Default Delta')
+    if fs is None:
+        logger.error(f"'Default Delta' not found in config for signal {signal_name}.")
+        return None
+    
+    log_filename = f'parametric_bias-{signal_name}.txt'
+
+    logger.info(f"\t\tParams:   Bias Range=({bias[0]:.4f}, {(bias[1]-bias[0]):.4f}, {bias[-1]:.4f}),  Default d_norm={d_norm:.4f} Hz")
+    logger.info(f"\t\tSaving outputs to: {output_dir}")
+
+    try:
+        df_bias = studies.parametric_bias(
+            u, t, dur, fs, d_norm, bias, dte, freq_max,
+            start_idx, end_idx, 
+            log_filename, output_dir, signal_name,
+            bools.get('logs', False), bools.get('plots', False), bools.get('pickle', False)
+        )
+        return df_bias
+    except Exception as e:
+        logger.error(f"ERROR calling studies.parametric_bias for {signal_name}: {e}", exc_info=True)
+        return None
+
+
+def run_biparametric(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, bias: float, dte: float, freq_max: float, start_idx: int, end_idx: int, bools: BoolsDict, signal_name: str, output_dir: Optional[str]) -> Optional[pd.DataFrame]:
     '''
     Run the biparametric study for a given signal.
-    This function sets up the parameters for the biparametric study, including the frequency and delta ranges.
-    It then calls the `parametric_freq_delta` function from the `studies` module to perform the actual computation.
+    This function sets up the parameters for the biparametric study, including the bias and delta ranges.
+    It then calls the `parametric_bias_delta` function from the `studies` module to perform the actual computation.
     '''
     if output_dir is None:
         logger.debug(f"Output directory for Biparametric study ({signal_name}) is None. Skipping run.")
-        return None
-
-    # --- Frequency Range ---
-    freq_range_tuple = config.get('Frequency Range')
-    if freq_range_tuple is None:
-        logger.error(f"'Frequency Range' not found or invalid for biparametric ({signal_name}).")
-        return None
-    try:
-        start_freq, end_freq, step_freq = freq_range_tuple
-        freqs = np.arange(start_freq, end_freq + step_freq * 0.5, step_freq)
-    except (ValueError, TypeError) as e:
-        logger.error(f"Invalid frequency range for biparametric: {freq_range_tuple}. {e}", exc_info=True)
         return None
 
     # --- Delta Range ---
@@ -291,23 +280,29 @@ def run_biparametric(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: floa
         logger.error(f"Invalid delta range for biparametric: {delta_range_tuple}. {e}", exc_info=True)
         return None
 
-    log_filename = f'parametric_freqDelta-{signal_name}.txt'
+    # Get default frequency
+    fs = config.get('Default Frequency')
+    if fs is None:
+        logger.error(f"'Default Frequency' not found in config for signal {signal_name}.")
+        return None
+    
+    log_filename = f'parametric_biasDelta-{signal_name}.txt'
 
-    logger.info(f"\t\tFrequency range: {freqs[0]:.1f} to {freqs[-1]:.1f} Hz")
+    logger.info(f"\t\tBias range: {bias[0]:.4f} to {bias[-1]:.4f}")
     logger.info(f"\t\tDelta range: {deltas[0]:.4f} to {deltas[-1]:.4f}")
     logger.info(f"\t\tSaving outputs to: {output_dir}")
 
     try:
-        # Pass indices to studies.parametric_freq_delta
-        df_2d = studies.parametric_freq_delta(
-            u, t, dur, freqs, deltas, b, dte, freq_max,
+        # Pass indices to studies.parametric_bias_delta
+        df_2d = studies.parametric_bias_delta(
+            u, t, dur, fs, deltas, bias, dte, freq_max,
             start_idx, end_idx, # Pass indices
             log_filename, output_dir, signal_name,
             bools.get('logs', False), bools.get('plots', False), bools.get('pickle', False)
         )
         return df_2d
     except Exception as e:
-        logger.error(f"ERROR calling studies.parametric_freq_delta for {signal_name}: {e}", exc_info=True)
+        logger.error(f"ERROR calling studies.parametric_bias_delta for {signal_name}: {e}", exc_info=True)
         return None
 
 
@@ -321,9 +316,9 @@ def save_results(summary_results: ParametricResultsDict, bools: BoolsDict, outpu
         return
     logger.info("--- Saving Parametric Study Summary Results ---")
     study_map = { # Mapping internal study key to (output_path_key, filename_base)
-        "freq":       ('param_freq', 'parametric_freq_summary'),
+        "bias":       ('param_bias', 'parametric_bias_summary'),
         "delta":      ('param_delta', 'parametric_delta_summary'),
-        "freq_delta": ('biparametric', 'parametric_freqDelta_summary')
+        "bias_delta": ('biparametric', 'parametric_biasDelta_summary')
     }
 
     for signal_name, study_dataframes in summary_results.items():
@@ -346,14 +341,14 @@ def save_results(summary_results: ParametricResultsDict, bools: BoolsDict, outpu
                     except Exception as e:
                         logger.error(f"\t\tERROR saving summary Excel for {study_type} of {signal_name}: {e}", exc_info=True)
 
-                    # Pickle saving (optional)
-                    if bools.get('pickle', False):
-                        try:
-                            pickle_filename_no_ext = f"{base_filename}_{signal_name}"
-                            logger.info(f"\t\tSaving SUMMARY '{study_type}' metrics to Pickle: {pickle_filename_no_ext}.pkl")
-                            utils.save_pickle(df_summary, target_folder, pickle_filename_no_ext)
-                        except Exception as e:
-                            logger.error(f"\t\tERROR saving summary Pickle for {study_type} of {signal_name}: {e}", exc_info=True)
+                    # # Pickle saving (optional)
+                    # if bools.get('pickle', False):
+                    #     try:
+                    #         pickle_filename_no_ext = f"{base_filename}_{signal_name}"
+                    #         logger.info(f"\t\tSaving SUMMARY '{study_type}' metrics to Pickle: {pickle_filename_no_ext}.pkl")
+                    #         utils.save_pickle(df_summary, target_folder, pickle_filename_no_ext)
+                    #     except Exception as e:
+                    #         logger.error(f"\t\tERROR saving summary Pickle for {study_type} of {signal_name}: {e}", exc_info=True)
                 else:
                      logger.warning(f"\t\tOutput path for study type '{study_type}' (key: '{path_key}') not found. Cannot save summary for {signal_name}.")
             else:

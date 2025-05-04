@@ -127,7 +127,6 @@ def load_config(filename: str = 'config.txt') -> ConfigDict:
                 raise ValueError(f"Invalid 'Generated Input Type': {gen_type_raw}. Must be one of {allowed_gen_types}")
             config['Generated Input Type'] = gen_type_raw
             config['Signal Duration'] = _parse_float(raw_config['Signal Duration'], 'Signal Duration')
-            config['Encoder Bias'] = _parse_float(raw_config['Encoder Bias'], 'Encoder Bias')
             config['Encoder Resolution'] = _parse_float(raw_config['Encoder Resolution'], 'Encoder Resolution')
             config['Signal Sampling Rate'] = _parse_float(raw_config['Signal Sampling Rate'], 'Signal Sampling Rate')
             config['Frequencies'] = _parse_float_list(raw_config['Frequencies'], 'Frequencies')
@@ -136,7 +135,7 @@ def load_config(filename: str = 'config.txt') -> ConfigDict:
             raise ValueError(f"Invalid 'Input Source': {config['Input Source']}. Must be 'excel' or 'generated'.")
 
         # ----------- Output parameters -----------
-        config['Parametric Frequency Folder'] = raw_config['Parametric Frequency Folder']
+        config['Parametric Bias Folder'] = raw_config['Parametric Bias Folder']
         config['Parametric Delta Folder'] = raw_config['Parametric Delta Folder']
         config['Biparametric Folder'] = raw_config['Biparametric Folder']
         config['Nyquist Analysis Folder'] = raw_config['Nyquist Analysis Folder']
@@ -147,13 +146,13 @@ def load_config(filename: str = 'config.txt') -> ConfigDict:
         config['Store in pickle'] = _parse_bool(raw_config['Store in pickle'])
 
         # ----------- Parametric Studies parameters -----------
-        config['Run Parametric Freq'] = _parse_bool(raw_config['Run Parametric Freq'])
+        config['Run Parametric Bias'] = _parse_bool(raw_config['Run Parametric Bias'])
         config['Run Parametric Delta'] = _parse_bool(raw_config['Run Parametric Delta'])
         config['Run Biparametric'] = _parse_bool(raw_config['Run Biparametric'])
-        config['Frequency Range'] = _parse_range(raw_config.get('Frequency Range'), 'Frequency Range') 
         config['Delta Range'] = _parse_range(raw_config.get('Delta Range'), 'Delta Range') 
-        config['Default Frequency'] = _parse_float(raw_config['Default Frequency'], 'Default Frequency')
+        config['Default Bias'] = _parse_float(raw_config['Default Bias'], 'Default Bias')
         config['Default Delta'] = _parse_float(raw_config['Default Delta'], 'Default Delta')
+        config['Default Frequency'] = _parse_float(raw_config['Default Frequency'], 'Default Frequency')
 
         # ----------- Analysis parameters -----------
         config['Run Optimal'] = _parse_bool(raw_config['Run Optimal'])
@@ -235,7 +234,7 @@ def setup_output_folders(config: ConfigDict, bools: BoolsDict) -> OutputPathsDic
     Outputs
     -------
     - output_paths: dict
-        Dictionary mapping descriptive keys ('base_subcase', 'param_freq', etc.)
+        Dictionary mapping descriptive keys ('base_subcase', 'param_bias', etc.)
         to the absolute paths of created directories, or None if not created.
 
     Raises
@@ -271,14 +270,14 @@ def setup_output_folders(config: ConfigDict, bools: BoolsDict) -> OutputPathsDic
         if bools.get('execute', False):
             logger.info("Execution Flow active. Checking parametric study flags.")
             
-            if config.get('Run Parametric Freq', False):
-                path = os.path.join(full_subcase_path, config['Parametric Frequency Folder'])
-                logger.info(f"\tCreating/Verifying Parametric Freq folder: {path}")
+            if config.get('Run Parametric Bias', False):
+                path = os.path.join(full_subcase_path, config['Parametric Bias Folder'])
+                logger.info(f"\tCreating/Verifying Parametric Bias folder: {path}")
                 os.makedirs(path, exist_ok=True)
-                output_paths['param_freq'] = path
+                output_paths['param_bias'] = path
             else:
-                logger.info("\tSkipping Parametric Freq folder (Run Parametric Freq is False).")
-                output_paths['param_freq'] = None
+                logger.info("\tSkipping Parametric Bias folder (Run Parametric Bias is False).")
+                output_paths['param_bias'] = None
             
             if config.get('Run Parametric Delta', False):
                 path = os.path.join(full_subcase_path, config['Parametric Delta Folder'])
@@ -299,7 +298,7 @@ def setup_output_folders(config: ConfigDict, bools: BoolsDict) -> OutputPathsDic
                 output_paths['biparametric'] = None
         else:
             logger.info("Execution Flow inactive. Skipping all parametric folders.")
-            output_paths['param_freq'] = None
+            output_paths['param_bias'] = None
             output_paths['param_delta'] = None
             output_paths['biparametric'] = None
 

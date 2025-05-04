@@ -1,0 +1,57 @@
+# Configuration for TEM-TDM Toolkit
+general_settings:
+  input_folder: Input/                     # Relative path to input data directory
+  output_folder: Output/                   # Relative path to base output directory
+  execution_flow: true                     # Run parametric studies? (true/false)
+  results_flow: true                       # Run analysis studies? (true/false)
+  log_to_file: true                        # Save detailed logs to files? (true/false)
+  store_in_pickle: true                    # Save results as pickle files (in addition to Excel)? (true/false)
+  plot_output: true                        # Generate plots? (true/false)
+
+input_signal:
+  source: generated                      # 'generated' or 'excel'
+  mode: single                           # 'single' or 'batch' (currently only single used for output naming)
+
+  # Settings for source: generated
+  generated_type: multisin               # Type: 'multisin', 'paper', 'multifreq'
+  signal_duration: 1.0                   # Duration in seconds
+  encoder_resolution: 0.0001             # Corresponds to 'dte' simulation step size? (interpretation needed)
+  sampling_rate: 20000.0                 # Sampling rate for generating signal (Hz)
+  frequencies: [6.0, 20.0, 13.0]         # List of frequencies (Hz)
+  amplitudes: [0.5, 0.3, 0.15]           # List of corresponding amplitudes
+
+  # Settings for source: excel (currently placeholder/requires review)
+  filepaths: ["Experiment1.xlsx"]        # List of relative paths to input files from input_folder
+  # filenames: ["Exp1_RunA"]             # Optional: override default naming based on file path
+  experiment_sampling_rate: 1000.0       # Sampling rate of experimental data (Hz)
+  experiment_duration: 10.0              # Duration of experiment segment to use (s)
+
+output_folder_names:                     # Names for subfolders within the main output path
+  parametric_bias: parametric_bias       # Folder name for bias study results
+  parametric_delta: parametric_delta     # Folder name for delta study results
+  biparametric: parametric_bias_delta    # Folder name for 2D study results
+  nyquist: nyquist                       # Folder name for Nyquist analysis
+  optimal_conditions: optima             # Folder name for Optima analysis
+  fourier: fourier                       # Folder name for Fourier analysis
+
+parametric_studies:
+  run_parametric_bias: false             # Run the bias sweep? (true/false)
+  run_parametric_delta: true             # Run the delta sweep? (true/false)
+  run_biparametric: false                # Run the 2D sweep? (true/false)
+
+  # Range format: [start, end, step]
+  delta_range: [0.0001, 0.1, 0.0001]    # Range for normalized threshold 'd_norm' study
+
+  # Default values used when a parameter is NOT being swept
+  default_bias: 1.0                      # Default 'b' value for delta sweep
+  default_delta: 0.01                    # Default 'd_norm' value for bias sweep
+
+analysis:
+  run_optimal: true                      # Find optimal parameters? (true/false)
+  run_nyquist: true                      # Run Nyquist comparison? (true/false)
+  run_fourier: true                      # Run Fourier comparison? (true/false)
+
+  # Optional thresholds for optimal selection
+  error_threshold: 1                     # Optional: Max MEDIAN error allowed for optima
+  elapsed_time_threshold: null           # Optional: Max elapsed time allowed (seconds). Use 'null' or omit if no threshold.
+

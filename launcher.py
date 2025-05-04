@@ -129,9 +129,4 @@ def main(config_filename: str = 'config.txt') -> None:
 
 if __name__ == "__main__":
     config_path = 'config.txt'
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
-        logger.info(f"Using configuration file specified from command line: {config_path}")
-    else:
-        logger.info(f"Using default configuration file: {config_path}")
     main(config_path)
