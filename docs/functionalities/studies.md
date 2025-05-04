@@ -2,45 +2,41 @@
 
 ## Overview
 
-This module contains the core logic for executing parametric studies. It systematically runs the ASDM encode/decode simulation (`_run_single_simulation`) across ranges of specified parameters (sampling frequency `fs`, normalized threshold `d_norm`, or both). It calculates performance metrics for each simulation run, handles optional logging and plotting for individual runs, saves raw simulation data if requested, and aggregates the metrics into summary DataFrames for each study type.
+This module contains the core logic for executing parametric studies. It systematically runs the ASDM encode/decode simulation (`_run_single_simulation`) across ranges of specified parameters, now focusing on the **encoder bias (`b`)** and the **normalized threshold (`d_norm`)**. It calculates performance metrics for each simulation run, handles optional logging and plotting for individual runs, saves raw simulation data if requested, and aggregates the metrics into summary DataFrames for each study type.
 
 ## Functionality
 
 1.  **Single Simulation Runner (`_run_single_simulation`)**:
     *   The workhorse function that performs one complete cycle:
-        *   **Encoding:** Calls `asdm.asdm_encode` with the given parameters (`fs`, `d_norm`, `b`, `dte`).
-        *   **Decoding:** Calls `asdm.asdm_decode` using the generated spikes (`s`) and estimated bandwidth (`bw`).
+        *   **Input Scaling:** Normalizes the input signal `u` by the current bias `b` (`u/b`).
+        *   **Encoding:** Calls `asdm.asdm_encode` with the normalized input (`u/b`), the specified `d_norm`, and the simulation time step (`dte = 1/fs`).
+        *   **Decoding:** Calls `asdm.asdm_decode` using the generated spikes (`s`), duration `dur`, `dte`, and estimated bandwidth (`bw`). Note: The decoder implementation used here is assumed to be the δ-insensitive one, operating on the normalized principles.
         *   **Alignment:** Ensures the reconstructed signal (`u_rec`) matches the length of the original time vector (`t`).
         *   **Stable Region Extraction:** Selects the portion of the original signal (`u`), reconstructed signal (`u_rec`), and time vector (`t`) corresponding to the pre-calculated stable region indices (`start_idx`, `end_idx`).
-        *   **Metrics Calculation:** Calls `metrics.calculate_asdm_metrics` using the stable region data.
-        *   **Optional Outputs (if flags enabled):**
-            *   Logs the calculated metrics for this run to a study-specific log file using `project_logging.log_parametric_run`.
-            *   Generates plots (process comparison, spikes) using `plotting.plot_process` and `plotting.plot_with_spikes`.
-            *   Saves the raw simulation data (stable signals, spikes, metrics) to a pickle file using `utils.save_pickle`.
-    *   Returns a dictionary (`MetricsDict`) containing the calculated metrics and simulation parameters for this single run, or `None` if the simulation failed.
-2.  **Frequency Study (`parametric_freq`)**:
-    *   Takes an array of sampling frequencies (`freqs`) and a fixed normalized threshold (`d_norm`) as input, along with other shared parameters.
-    *   Initializes the study log file using `project_logging.log_study_header`.
-    *   Iterates through each `fs` in `freqs`.
-    *   Calls `_run_single_simulation` for each `fs`, passing the fixed `d_norm`.
-    *   Collects the resulting `MetricsDict` from each successful simulation run.
-    *   Aggregates the collected metrics into a pandas DataFrame (`df_freq`).
+        *   **Metrics Calculation:** Calls `metrics.calculate_asdm_metrics` using the *normalized* stable original signal (`u_stable/b`) and the stable reconstructed signal (`u_rec_stable`).
+        *   **Adds Parameters:** Includes the `b` and `d_norm` used for the run into the results dictionary.
+        *   **Optional Outputs (if flags enabled):** Logs metrics, generates plots, saves raw data (pickle).
+    *   Returns a dictionary (`MetricsDict`) with metrics and parameters for this single run, or `None` if failed.
+2.  **Bias Study (`parametric_bias`)**:
+    *   Takes an array of bias values (`bias`) and a fixed normalized threshold (`d_norm`) as input.
+    *   Initializes the study log file.
+    *   Iterates through each `b` in the `bias` array (ensuring `b > c` should be handled by the caller or config).
+    *   Calls `_run_single_simulation` for each `b`, passing the fixed `d_norm`.
+    *   Collects results and aggregates them into `df_bias`.
     *   Returns the summary DataFrame (or `None`).
 3.  **Delta Study (`parametric_delta`)**:
-    *   Takes an array of normalized thresholds (`deltas`) and a fixed sampling frequency (`fs`) as input.
+    *   Takes an array of normalized thresholds (`deltas`) and a fixed bias (`b`) as input.
     *   Initializes the study log file.
     *   Iterates through each `d_norm` in `deltas`.
-    *   Calls `_run_single_simulation` for each `d_norm`, passing the fixed `fs`.
-    *   Collects the results.
-    *   Aggregates metrics into a pandas DataFrame (`df_delta`).
+    *   Calls `_run_single_simulation` for each `d_norm`, passing the fixed `b`.
+    *   Collects results and aggregates them into `df_delta`.
     *   Returns the summary DataFrame (or `None`).
-4.  **Biparametric Study (`parametric_freq_delta`)**:
-    *   Takes arrays of frequencies (`freqs`) and thresholds (`deltas`) as input.
+4.  **Biparametric Study (`parametric_bias_delta`)**:
+    *   Takes arrays of bias values (`bias`) and thresholds (`deltas`) as input.
     *   Initializes the study log file.
-    *   Uses nested loops to iterate through *all combinations* of `fs` and `d_norm`.
-    *   Calls `_run_single_simulation` for each (`fs`, `d_norm`) pair.
-    *   Collects the results.
-    *   Aggregates metrics into a pandas DataFrame (`df_2d`).
+    *   Uses nested loops to iterate through *all combinations* of `b` and `d_norm`.
+    *   Calls `_run_single_simulation` for each (`b`, `d_norm`) pair.
+    *   Collects results and aggregates them into `df_2d`.
     *   Returns the summary DataFrame (or `None`).
 
 ## Visualization: module level
@@ -66,11 +62,11 @@ graph LR
     %% --- Inputs ---
     subgraph Inputs
         direction TB
-        InShared[Shared Parameters<br/><span style='font-size:0.9em; color:#444'>u, t, dur, b, dte, freq_max, start_idx, end_idx,<br/>log_filename, output_dir, signal_name,<br/>log_study, plot_study, save_raw</span>]:::inputStyle
-        InFreqRange[freqs: np.ndarray<br/><span style='font-size:0.9em; color:#444'>for PF, PFD</span>]:::inputStyle
-        InDeltaRange[deltas: np.ndarray<br/><span style='font-size:0.9em; color:#444'>for PD, PFD</span>]:::inputStyle
-        InFs[fs: float<br/><span style='font-size:0.9em; color:#444'>for PD</span>]:::inputStyle
-        InDnorm[d_norm: float<br/><span style='font-size:0.9em; color:#444'>for PF</span>]:::inputStyle
+        InShared[Shared Parameters<br/><span style='font-size:0.9em; color:#444'>u, t, dur, fs, dte, freq_max, start_idx, end_idx,<br/>log_filename, output_dir, signal_name,<br/>log_study, plot_study, save_raw</span>]:::inputStyle
+        InBiasRange[bias: np.ndarray<br/><span style='font-size:0.9em; color:#444'>for PB, PBD</span>]:::inputStyle
+        InDeltaRange[deltas: np.ndarray<br/><span style='font-size:0.9em; color:#444'>for PD, PBD</span>]:::inputStyle
+        InBias[b: float<br/><span style='font-size:0.9em; color:#444'>for PD</span>]:::inputStyle
+        InDnorm[d_norm: float<br/><span style='font-size:0.9em; color:#444'>for PB</span>]:::inputStyle
         %% Invisible Collector for inputs
         InputCollector( ):::collectorStyle
     end
@@ -78,18 +74,18 @@ graph LR
     %% --- Processes (Parametric Study Functions) ---
     subgraph Process
         direction TB
-        P_Freq[parametric_freq]:::processStyle
+        P_Bias[parametric_bias]:::processStyle
         P_Delta[parametric_delta]:::processStyle
-        P_FreqDelta[parametric_freq_delta]:::processStyle
+        P_BiasDelta[parametric_bias_delta]:::processStyle
     end
 
     %% --- Helper Process (Core Simulation) ---
-    subgraph Core Simulation Helper
+    subgraph Core_Simulation_Helper ["Core Simulation Helper"]
         P_Single[_run_single_simulation]:::helperStyle
     end
 
      %% --- External Dependencies ---
-    subgraph Called Modules
+    subgraph Called_Modules ["Called Modules"]
         direction TB
         ExtASDM[asdm: encode/decode]:::externalStyle
         ExtMetrics[metrics: calculate]:::externalStyle
@@ -112,18 +108,18 @@ graph LR
 
     %% -------------------------------- Connections --------------------------------
     %% Inputs flow to the invisible input collector
-    InShared --> InputCollector; InFreqRange --> InputCollector; InDeltaRange --> InputCollector;
-    InFs --> InputCollector; InDnorm --> InputCollector;
+    InShared --> InputCollector; InBiasRange --> InputCollector; InDeltaRange --> InputCollector;
+    InBias --> InputCollector; InDnorm --> InputCollector;
 
     %% Input Collector connects to the specific study functions
-    InputCollector -- Specific Inputs --> P_Freq
+    InputCollector -- Specific Inputs --> P_Bias
     InputCollector -- Specific Inputs --> P_Delta
-    InputCollector -- Specific Inputs --> P_FreqDelta
+    InputCollector -- Specific Inputs --> P_BiasDelta
 
     %% Study functions call the core simulation helper within their loops
-    P_Freq -- Calls (in loop) --> P_Single
+    P_Bias -- Calls (in loop) --> P_Single
     P_Delta -- Calls (in loop) --> P_Single
-    P_FreqDelta -- Calls (in loop) --> P_Single
+    P_BiasDelta -- Calls (in loop) --> P_Single
 
     %% Core helper calls external dependencies (connected via collector)
     ExtASDM --> DepCollector; ExtMetrics --> DepCollector; ExtLogging --> DepCollector;
@@ -134,20 +130,20 @@ graph LR
     DepCollector -- Generates --> O_Files
 
     %% Metrics Dict is returned by helper and collected by study functions
-    P_Single -- Returns MetricsDict --> StudyFunctions
+    P_Single -- Returns MetricsDict --> Process
 
     %% Study functions aggregate metrics and return DataFrame
-    P_Freq -- Aggregates & Returns --> O_DF
+    P_Bias -- Aggregates & Returns --> O_DF
     P_Delta -- Aggregates & Returns --> O_DF
-    P_FreqDelta -- Aggregates & Returns --> O_DF
+    P_BiasDelta -- Aggregates & Returns --> O_DF
 ````
 
 ## Visualization: funtion level
 
 ````python
-parametric_freq()
+parametric_bias()
 ````
-Runs a parametric sweep over a range of sampling frequencies (`fs`) while keeping the normalized threshold (`d_norm`) constant
+Runs a parametric sweep over a range of encoder bias values (`b`) while keeping the normalized threshold (`d_norm`) constant.
 ````mermaid
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#333', 'lineColor': '#666', 'fontSize': '14px' } } }%%
 graph LR
@@ -160,7 +156,7 @@ graph LR
     %% Invisible style for grouping nodes without visual clutter
     classDef collectorStyle fill:none,stroke:none
 
-    %% -------------------------------- Diagram Structure: parametric_freq --------------------------------
+    %% -------------------------------- Diagram Structure: parametric_bias --------------------------------
     subgraph Input
         direction TB %% Arrange inputs vertically
 
@@ -168,38 +164,36 @@ graph LR
         In1[u: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Input Signal</span>]:::inputStyle
         In2[t: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Signal Time Vector</span>]:::inputStyle
         In3[dur: float<br/><span style='font-size:0.9em; color:#444'>Signal Duration</span>]:::inputStyle
-        In4[freqs: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Frequencies to Test</span>]:::inputStyle
-        In5[d_norm: float<br/><span style='font-size:0.9em; color:#444'>Fixed Encoder Threshold</span>]:::inputStyle
-        In6[b: float<br/><span style='font-size:0.9em; color:#444'>Fixed Encoder Bias</span>]:::inputStyle
-        In7[dte: float<br/><span style='font-size:0.9em; color:#444'>Fixed Encoding Sample Time</span>]:::inputStyle
-        In8[start_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis Start Index</span>]:::inputStyle
-        In9[end_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis End Index</span>]:::inputStyle
-        In10[log_filename: str<br/><span style='font-size:0.9em; color:#444'>Log Filename</span>]:::inputStyle
-        In11[output_dir: str<br/><span style='font-size:0.9em; color:#444'>Output Directory Path</span>]:::inputStyle
-        In12[signal_name: str<br/><span style='font-size:0.9em; color:#444'>Signal Identifier</span>]:::inputStyle
-        In13[freq_max: float<br/><span style='font-size:0.9em; color:#444'>Max Signal Freq: or BW</span>]:::inputStyle
+        In4[fs: float<br/><span style='font-size:0.9em; color:#444'>Fixed Sampling Frequency</span>]:::inputStyle
+        In5[d_norm: float<br/><span style='font-size:0.9em; color:#444'>Fixed Norm. Threshold</span>]:::inputStyle
+        In6[bias: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Bias values to Test</span>]:::inputStyle
+        In7[dte: float<br/><span style='font-size:0.9em; color:#444'>Encoding Sample Time</span>]:::inputStyle
+        In8[freq_max: float<br/><span style='font-size:0.9em; color:#444'>Max Signal Freq: for BW</span>]:::inputStyle
+        In9[start_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis Start Index</span>]:::inputStyle
+        In10[end_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis End Index</span>]:::inputStyle
+        In11[log_filename: str<br/><span style='font-size:0.9em; color:#444'>Log Filename</span>]:::inputStyle
+        In12[output_dir: str<br/><span style='font-size:0.9em; color:#444'>Output Directory Path</span>]:::inputStyle
+        In13[signal_name: str<br/><span style='font-size:0.9em; color:#444'>Signal Identifier</span>]:::inputStyle
 
 
         %% Optional Input Nodes
-        InOpt1[log_study: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Logging</span>]:::optionalInputStyle
-        InOpt2[plot_study: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Plotting</span>]:::optionalInputStyle
-        InOpt3[save_raw: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Raw Data Saving</span>]:::optionalInputStyle
+        InOpt1[log_study: bool]:::optionalInputStyle
+        InOpt2[plot_study: bool]:::optionalInputStyle
+        InOpt3[save_raw: bool]:::optionalInputStyle
 
         %% Invisible Node to collect input arrows
         InputCollector( ):::collectorStyle
     end
 
     subgraph Process
-        P[parametric_freq<br/><span style='font-size:0.9em; color:#444'>Runs simulations across<br/>a frequency range: fs</span>]:::processStyle
-        Loop{Loop over freqs};
+        P[parametric_bias<br/><span style='font-size:0.9em; color:#444'>Runs simulations across<br/>a bias range: b</span>]:::processStyle
+        Loop{Loop over bias};
         Call[_run_single_simulation];
     end
 
     subgraph Output
         %% Primary Return Value
-        O[df_freq: pd.DataFrame<br/><span style='font-size:0.9em; color:#444'>DataFrame of metrics per frequency,<br/>or None on error/no results</span>]:::outputStyle
-        %% Note: This function also has side effects (creating files/dirs) if options enabled,
-        %% but the primary return value is the DataFrame or None.
+        O[df_bias: pd.DataFrame<br/><span style='font-size:0.9em; color:#444'>DataFrame of metrics per bias,<br/>or None on error/no results</span>]:::outputStyle
     end
 
     %% -------------------------------- Connections --------------------------------
@@ -215,7 +209,7 @@ graph LR
     InputCollector -- Parameters --> P
 
     P -- Initiates --> Loop
-    Loop -- Calls for each fs --> Call
+    Loop -- Calls for each b --> Call
     Call -- Returns MetricsDict --> Loop
     Loop -- Aggregates --> P
 
@@ -226,7 +220,7 @@ graph LR
 ````python
 parametric_delta()
 ````
-Runs a parametric sweep over a range of normalized thresholds (`d_norm`) while keeping the sampling frequency (`fs`) constant.
+Runs a parametric sweep over a range of normalized thresholds (`d_norm`) while keeping the encoder bias (`b`) constant.
 
 ````mermaid
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#333', 'lineColor': '#666', 'fontSize': '14px' } } }%%
@@ -302,9 +296,9 @@ graph LR
 ````
 
 ````python
-parametric_freq_delta()
+parametric_bias_delta()
 ````
-Runs a biparametric sweep over combinations of sampling frequency (`fs`) and normalized threshold (`d_norm`).
+Runs a biparametric sweep over combinations of encoder bias (`b`) and normalized threshold (`d_norm`).
 
 ````mermaid
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#333', 'lineColor': '#666', 'fontSize': '14px' } } }%%
@@ -318,7 +312,7 @@ graph LR
     %% Invisible style for grouping nodes without visual clutter
     classDef collectorStyle fill:none,stroke:none
 
-    %% -------------------------------- Diagram Structure: parametric_freq_delta --------------------------------
+    %% -------------------------------- Diagram Structure: parametric_bias_delta --------------------------------
     subgraph Input
         direction TB %% Arrange inputs vertically
 
@@ -326,36 +320,35 @@ graph LR
         In1[u: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Input Signal</span>]:::inputStyle
         In2[t: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Signal Time Vector</span>]:::inputStyle
         In3[dur: float<br/><span style='font-size:0.9em; color:#444'>Signal Duration</span>]:::inputStyle
-        In4[freqs: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Frequencies to Test: fs</span>]:::inputStyle
-        In5[deltas: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Thresholds to Test: d_norm</span>]:::inputStyle
-        In6[b: float<br/><span style='font-size:0.9em; color:#444'>Fixed Encoder Bias</span>]:::inputStyle
-        In7[dte: float<br/><span style='font-size:0.9em; color:#444'>Fixed Encoding Sample Time</span>]:::inputStyle
-        In8[start_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis Start Index</span>]:::inputStyle
-        In9[end_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis End Index</span>]:::inputStyle
-        In10[log_filename: str<br/><span style='font-size:0.9em; color:#444'>Log Filename</span>]:::inputStyle
-        In11[output_dir: str<br/><span style='font-size:0.9em; color:#444'>Output Directory Path</span>]:::inputStyle
-        In12[signal_name: str<br/><span style='font-size:0.9em; color:#444'>Signal Identifier</span>]:::inputStyle
-        In13[freq_max: float<br/><span style='font-size:0.9em; color:#444'>Max Signal Freq: for BW</span>]:::inputStyle
+        In4[fs: float<br/><span style='font-size:0.9em; color:#444'>Fixed Sampling Frequency</span>]:::inputStyle
+        In5[deltas: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Thresholds to Test</span>]:::inputStyle
+        In6[bias: np.ndarray<br/><span style='font-size:0.9em; color:#444'>Bias values to Test</span>]:::inputStyle
+        In7[dte: float<br/><span style='font-size:0.9em; color:#444'>Encoding Sample Time</span>]:::inputStyle
+        In8[freq_max: float<br/><span style='font-size:0.9em; color:#444'>Max Signal Freq: for BW</span>]:::inputStyle
+        In9[start_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis Start Index</span>]:::inputStyle
+        In10[end_idx: int<br/><span style='font-size:0.9em; color:#444'>Analysis End Index</span>]:::inputStyle
+        In11[log_filename: str<br/><span style='font-size:0.9em; color:#444'>Log Filename</span>]:::inputStyle
+        In12[output_dir: str<br/><span style='font-size:0.9em; color:#444'>Output Directory Path</span>]:::inputStyle
+        In13[signal_name: str<br/><span style='font-size:0.9em; color:#444'>Signal Identifier</span>]:::inputStyle
 
         %% Optional Input Nodes
-        InOpt1[log_study: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Logging</span>]:::optionalInputStyle
-        InOpt2[plot_study: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Plotting</span>]:::optionalInputStyle
-        InOpt3[save_raw: bool<br/><span style='font-size:0.9em; color:#444'>Enable/Disable Raw Data Saving</span>]:::optionalInputStyle
+        InOpt1[log_study: bool]:::optionalInputStyle
+        InOpt2[plot_study: bool]:::optionalInputStyle
+        InOpt3[save_raw: bool]:::optionalInputStyle
 
         %% Invisible Node to collect input arrows
         InputCollector( ):::collectorStyle
     end
 
     subgraph Process
-        P[parametric_freq_delta<br/><span style='font-size:0.9em; color:#444'>Runs simulations across<br/>combinations of frequency: fs<br/>and threshold: d_norm</span>]:::processStyle
-        Loop{Nested Loop over<br/>freqs & deltas};
+        P[parametric_bias_delta<br/><span style='font-size:0.9em; color:#444'>Runs simulations across<br/>combinations of encoder bias: b<br/>and threshold: d_norm</span>]:::processStyle
+        Loop{Nested Loop over<br/>bias & deltas};
         Call[_run_single_simulation];
     end
 
     subgraph Output
         %% Primary Return Value
-        O[df_2d: pd.DataFrame <br/><span style='font-size:0.9em; color:#444'>DataFrame of metrics per: fs, d_norm ,<br/>or None on error/no results</span>]:::outputStyle
-        %% Note: This function also has side effects (creating files/dirs) if options enabled.
+        O[df_2d: pd.DataFrame <br/><span style='font-size:0.9em; color:#444'>DataFrame of metrics per: b, d_norm ,<br/>or None on error/no results</span>]:::outputStyle
     end
 
     %% -------------------------------- Connections --------------------------------
@@ -371,7 +364,7 @@ graph LR
     InputCollector -- Parameters --> P
 
     P -- Initiates --> Loop
-    Loop -- Calls for each (fs, d_norm) pair --> Call
+    Loop -- Calls for each (b, d_norm) pair --> Call
     Call -- Returns MetricsDict --> Loop
     Loop -- Aggregates --> P
 
