@@ -109,7 +109,7 @@ def run_studies(config: ConfigDict, signals: List[SignalDict], bools: BoolsDict,
                                         bools, signal_name, output_paths['param_bias'])
                 if df_bias is not None and not df_bias.empty:
                     current_signal_results["bias"] = df_bias
-                    logger.info(f"\Bias study for {signal_name} completed.")
+                    logger.info(f"\tBias study for {signal_name} completed.")
 
                     if bools.get('plots', False):
                         filename = f"param_bias_summary_{signal_name}.png"
@@ -242,7 +242,7 @@ def run_bias(config: ConfigDict, u: np.ndarray, t: np.ndarray, dur: float, bias:
     
     log_filename = f'parametric_bias-{signal_name}.txt'
 
-    logger.info(f"\t\tParams: Delta Range=({bias[0]:.4f}, {(bias[1]-bias[0]):.4f}, {bias[-1]:.4f}),  Default d_norm={d_norm:.4f} Hz")
+    logger.info(f"\t\tParams:   Bias Range=({bias[0]:.4f}, {(bias[1]-bias[0]):.4f}, {bias[-1]:.4f}),  Default d_norm={d_norm:.4f} Hz")
     logger.info(f"\t\tSaving outputs to: {output_dir}")
 
     try:
@@ -341,14 +341,14 @@ def save_results(summary_results: ParametricResultsDict, bools: BoolsDict, outpu
                     except Exception as e:
                         logger.error(f"\t\tERROR saving summary Excel for {study_type} of {signal_name}: {e}", exc_info=True)
 
-                    # Pickle saving (optional)
-                    if bools.get('pickle', False):
-                        try:
-                            pickle_filename_no_ext = f"{base_filename}_{signal_name}"
-                            logger.info(f"\t\tSaving SUMMARY '{study_type}' metrics to Pickle: {pickle_filename_no_ext}.pkl")
-                            utils.save_pickle(df_summary, target_folder, pickle_filename_no_ext)
-                        except Exception as e:
-                            logger.error(f"\t\tERROR saving summary Pickle for {study_type} of {signal_name}: {e}", exc_info=True)
+                    # # Pickle saving (optional)
+                    # if bools.get('pickle', False):
+                    #     try:
+                    #         pickle_filename_no_ext = f"{base_filename}_{signal_name}"
+                    #         logger.info(f"\t\tSaving SUMMARY '{study_type}' metrics to Pickle: {pickle_filename_no_ext}.pkl")
+                    #         utils.save_pickle(df_summary, target_folder, pickle_filename_no_ext)
+                    #     except Exception as e:
+                    #         logger.error(f"\t\tERROR saving summary Pickle for {study_type} of {signal_name}: {e}", exc_info=True)
                 else:
                      logger.warning(f"\t\tOutput path for study type '{study_type}' (key: '{path_key}') not found. Cannot save summary for {signal_name}.")
             else:

@@ -266,7 +266,7 @@ def perform_fourier_study(signal_data: SignalDict, optimal_sim_results: Optional
     
 
     # --- 4. Find Principal Frequencies ---
-    num_principal = 5 # HARD-CODED: Number of principal frequencies to find
+    num_principal = 3 # HARD-CODED: Number of principal frequencies to find
     min_principal_freq = 0.1 # HARD-CODED: Minimum frequency to consider for principal frequencies (Hz)
     logger.info(f"\tFinding top {num_principal} principal frequencies (min_freq={min_principal_freq} Hz)...")
 

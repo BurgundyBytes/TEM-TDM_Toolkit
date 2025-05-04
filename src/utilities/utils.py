@@ -118,7 +118,7 @@ def estimate_bias_range(c: float = 1.0):
     # --- Hardcoded Defaults ---
     start_factor: float = 1.01
     end_value: float = 2.0
-    step: float = 0.001
+    step: float = 0.01
 
     # --- Input Validation ---
     if not isinstance(c, (int, float)) or c < 0:

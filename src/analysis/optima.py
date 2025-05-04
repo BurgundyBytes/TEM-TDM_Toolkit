@@ -36,7 +36,7 @@ def _filter_and_select(df: pd.DataFrame, id_cols: List[str], error_col: str = ut
     # Hardcoded number of candidates to keep for filtering
     n_candidates: int = 10
     # Define all columns needed for processing and output
-    metric_cols = list(set([error_col, time_col, utils.COL_MAX_ERR, utils.COL_NRMSE_STD, utils.COL_N_SPIKES])) 
+    metric_cols = list(set([error_col, time_col, utils.COL_MAX_ERR, utils.COL_NRMSE_STD, utils.COL_R2, utils.COL_N_SPIKES])) 
     required_cols = list(set(id_cols + metric_cols)) # All columns that must be present
 
     if not all(col in df.columns for col in required_cols):
@@ -195,7 +195,7 @@ def _find_optimal_conditions(df_bias: Optional[pd.DataFrame], df_delta: Optional
             logger.warning("Cannot fully evaluate 1D Delta sweep: 'Default Bias' not found in config. Sweep skipped.")
         else:
             try:
-                optimal_candidate_row, optimal_candidates = _filter_and_select(df_delta, id_cols=[utils.COL_FS, utils.COL_D_NORM],
+                optimal_candidate_row, optimal_candidates = _filter_and_select(df_delta, id_cols=[utils.COL_B, utils.COL_D_NORM],
                                                         error_threshold=error_threshold, time_threshold=time_threshold)
 
                 if optimal_candidate_row is not None:
@@ -222,6 +222,7 @@ def _find_optimal_conditions(df_bias: Optional[pd.DataFrame], df_delta: Optional
                 utils.COL_MAX_ERR: optimal_candidate_row[utils.COL_MAX_ERR],
                 utils.COL_MED_ERR: optimal_candidate_row[utils.COL_MED_ERR],
                 utils.COL_NRMSE_STD: optimal_candidate_row[utils.COL_NRMSE_STD],
+                utils.COL_R2: optimal_candidate_row[utils.COL_R2],
                 utils.COL_TIME: optimal_candidate_row[utils.COL_TIME],
                 utils.COL_N_SPIKES: optimal_candidate_row[utils.COL_N_SPIKES],
                 KEY_OPT_SOURCE_STUDY: source_df_type
@@ -247,7 +248,7 @@ def _find_optimal_conditions(df_bias: Optional[pd.DataFrame], df_delta: Optional
 
 def _find_signal_optima_step(study_results_for_signal: Optional[ParametricResultsDict], config: ConfigDict, signal_name: str) -> Optional[OptimalParamsDict]:
     '''
-    Finds optimal parameters (fs, d_norm) for one signal based on available parametric summaries.
+    Finds optimal parameters (bias, d_norm) for one signal based on available parametric summaries.
     Prioritizes bias_delta > bias > delta studies.
     Minimizes median error ('error_median' column assumed) within thresholds.
 
@@ -263,7 +264,7 @@ def _find_signal_optima_step(study_results_for_signal: Optional[ParametricResult
     Outputs
     -------
     - optimal_params: dict or None
-        Dictionary containing optimal parameters (fs, d_norm) or None if not found.
+        Dictionary containing optimal parameters (bias, d_norm) or None if not found.
 
     Raises
     ------
@@ -313,7 +314,7 @@ def _simulate_and_save_optimal_step(signal_data: SignalDict, optimal_params: Opt
     - signal_data: dict
         Dictionary containing signal data (t, u, dur, b, dte).
     - optimal_params: dict
-        Dictionary containing optimal parameters (fs, d_norm).
+        Dictionary containing optimal parameters (bias, d_norm).
     - optimal_output_path: str
         Path to save the results.
     - bools: dict
@@ -343,7 +344,7 @@ def _simulate_and_save_optimal_step(signal_data: SignalDict, optimal_params: Opt
         u = signal_data.get('u')
         dur = signal_data.get('dur')
         dte = signal_data.get('dte')
-        fs = signal_data.get('Default Frequency')
+        fs = config.get('Default Frequency')
         b = optimal_params.get(utils.COL_B)
         d_norm = optimal_params.get(utils.COL_D_NORM)
         freq_max = signal_data.get('freq_max') 
@@ -366,7 +367,7 @@ def _simulate_and_save_optimal_step(signal_data: SignalDict, optimal_params: Opt
         logger.error(f"\tError during setup for optimal simulation [{signal_name}]: {e}", exc_info=True)
         return None
 
-    logger.info(f"\tRunning simulation with optimal fs={fs:.1f}, d_norm={d_norm:.4f}...")
+    logger.info(f"\tRunning simulation with optimal b={b:.4f}, d_norm={d_norm:.4f}...")
     start_time = time.time()
     u_rec = None
     s = None
@@ -507,7 +508,7 @@ def perform_optima_study(signal_data: SignalDict, results_for_this_signal: Optio
     Outputs
     -------
     - optimal_params: Optional[OptimalParamsDict]
-        Dictionary containing optimal parameters (fs, d_norm) or None if not found.
+        Dictionary containing optimal parameters (bias, d_norm) or None if not found.
     - optima_sim_result: Optional[OptimalSimResultDict]
         DataFrame containing Optima analysis results or None if errors occurred.
     '''

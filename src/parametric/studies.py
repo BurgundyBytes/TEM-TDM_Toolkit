@@ -31,7 +31,7 @@ def _run_single_simulation(
     Uses provided stable region indices. Assumes additive bias model.
     '''
     start_time = time.time()
-    run_id = f"fs={fs:.0f}_d={d_norm:.4f}" # Identifier for logging this specific run
+    run_id = f"b={b:.4f}_d={d_norm:.4f}" # Identifier for logging this specific run
     logger.info(f"\tSimulating ({run_id}): b={b:.3f}, dte={dte:.1e}...")
 
     # --- Core Encode/Decode ---
@@ -132,28 +132,28 @@ def _run_single_simulation(
             logger.warning(f"\t({run_id}) Failed to log run data to {base_log_filename}: {e}", exc_info=True)
 
     # --- Plotting (Conditional) ---
-    if plot_study and output_dir:
-        # Generate filenames
-        fs_str = f"{fs:.0f}".replace('.', 'p')
-        dnorm_str = f"{d_norm:.4f}".replace('.', 'p')
-        plot_title = f"{signal_name} ({run_id})" # Include run params in title
-        base_filename = f"plot_{study_type_tag}_{signal_name}_f{fs_str}_d{dnorm_str}"
+    # if plot_study and output_dir:
+    #     # Generate filenames
+    #     b_str = f"{b:.4f}".replace('.', 'p')
+    #     dnorm_str = f"{d_norm:.4f}".replace('.', 'p')
+    #     plot_title = f"{signal_name} ({run_id})" # Include run params in title
+    #     base_filename = f"plot_{study_type_tag}_{signal_name}_b{b_str}_d{dnorm_str}"
 
-        # Plot 1: Process (Original vs Reconstructed vs Error)
-        try:
-            plot_filename_proc = f"{base_filename}_process.png" # Add suffix
-            logger.debug(f"\t({run_id}) Plotting process to {plot_filename_proc}")
-            plotting.plot_process(t_stable, u_stable/b, u_rec_stable, plot_title, os.path.join(output_dir, plot_filename_proc))
-        except Exception as e:
-            logger.warning(f"\t({run_id}) Failed to plot process data: {e}", exc_info=True)
+    #     # Plot 1: Process (Original vs Reconstructed vs Error)
+    #     try:
+    #         plot_filename_proc = f"{base_filename}_process.png" # Add suffix
+    #         logger.debug(f"\t({run_id}) Plotting process to {plot_filename_proc}")
+    #         plotting.plot_process(t_stable, u_stable/b, u_rec_stable, plot_title, os.path.join(output_dir, plot_filename_proc))
+    #     except Exception as e:
+    #         logger.warning(f"\t({run_id}) Failed to plot process data: {e}", exc_info=True)
 
-        # Plot 2: Spikes (Original vs Spikes vs Reconstructed)
-        try:
-            plot_filename_spk = f"{base_filename}_spikes.png" # Add suffix
-            logger.debug(f"\t({run_id}) Plotting spikes to {plot_filename_spk}")
-            plotting.plot_with_spikes(t_stable, u_stable/b, u_rec_stable, s, plot_title, os.path.join(output_dir, plot_filename_spk))
-        except Exception as e:
-            logger.warning(f"\t({run_id}) Failed to plot spike data: {e}", exc_info=True)
+    #     # Plot 2: Spikes (Original vs Spikes vs Reconstructed)
+    #     try:
+    #         plot_filename_spk = f"{base_filename}_spikes.png" # Add suffix
+    #         logger.debug(f"\t({run_id}) Plotting spikes to {plot_filename_spk}")
+    #         plotting.plot_with_spikes(t_stable, u_stable/b, u_rec_stable, s, plot_title, os.path.join(output_dir, plot_filename_spk))
+    #     except Exception as e:
+    #         logger.warning(f"\t({run_id}) Failed to plot spike data: {e}", exc_info=True)
 
     return metrics_dict
 

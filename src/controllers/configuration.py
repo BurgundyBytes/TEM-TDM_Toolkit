@@ -152,6 +152,7 @@ def load_config(filename: str = 'config.txt') -> ConfigDict:
         config['Delta Range'] = _parse_range(raw_config.get('Delta Range'), 'Delta Range') 
         config['Default Bias'] = _parse_float(raw_config['Default Bias'], 'Default Bias')
         config['Default Delta'] = _parse_float(raw_config['Default Delta'], 'Default Delta')
+        config['Default Frequency'] = _parse_float(raw_config['Default Frequency'], 'Default Frequency')
 
         # ----------- Analysis parameters -----------
         config['Run Optimal'] = _parse_bool(raw_config['Run Optimal'])

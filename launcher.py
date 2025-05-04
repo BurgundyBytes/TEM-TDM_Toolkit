@@ -27,7 +27,7 @@ SignalResultsDict = Dict[str, Optional[pd.DataFrame]]
 ParametricResultsDict = Dict[str, SignalResultsDict]
 
 
-def main(config_filename: str = 'config.yaml') -> None:
+def main(config_filename: str = 'config.txt') -> None:
     '''
     Main execution function for the signal processing plant.
     This function orchestrates the loading of configuration, setting up output folders,
@@ -36,7 +36,7 @@ def main(config_filename: str = 'config.yaml') -> None:
     Inputs
     -------
     - config_filename: str
-        Path to the configuration file. Default is 'config.yaml'.
+        Path to the configuration file. Default is 'config.txt'.
 
     Raises
     -------
@@ -128,10 +128,5 @@ def main(config_filename: str = 'config.yaml') -> None:
     logger.info("\n--- Plant Operations Complete ---")
 
 if __name__ == "__main__":
-    config_path = 'config.yaml'
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
-        logger.info(f"Using configuration file specified from command line: {config_path}")
-    else:
-        logger.info(f"Using default configuration file: {config_path}")
+    config_path = 'config.txt'
     main(config_path)

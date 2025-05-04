@@ -1,35 +1,37 @@
 # TEM-TDM Toolkit
 This Python toolkit is designed to assess the validity and performance of Asynchronous Sigma-Delta Modulators (ASDM) when used as Time Encoding Machines (TEM) and Time Decoding Machines (TDM), particularly for complex or turbulent signals. 
 
-It implements and analyzes the concepts presented in the paper [Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf) by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit specifically allows for studying the *normalized equivalent circuit* proposed in the paper, focusing on how the **normalized threshold (`d_norm`)** affects signal recovery. 
+It implements and analyzes the concepts presented in the paper **[Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf)** by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit leverages the paper's normalization technique to manage the complexity of the ASDM's three physical parameters (`k`, `b`, `delta`).
 
 ![Normalized TEM Equivalent Circuit Diagram](docs/resources/ASDM_Equivalent_Circuit.PNG)
 
-The core idea tested is that by carefully selecting the normalized threshold `d_norm` (related to the ASDM's hysteresis (`delta`, bias `b` and gain `k`), a bandlimited signal can be efficiently represented by asynchronous spike times and recovered with high fidelity, potentially outperforming uniform sampling at equivalent data rates under certain conditions.
+Reducing the degrees of freedom in a physical system analysis, like going from (`k`, `b`, `delta`) to fewer parameters, doesn't eliminate the underlying physics; instead, it requires introducing constraints. For feedback systems like the ASDM, especially nonlinear ones, these constraints often relate to **stability** and **error performance**. This toolkit explores how these constraints manifest when using the normalized model. Normalization forces us to pay close attention to how the signal enters the circuit (via the **bias `b`**, ensuring `b > max|x(t)|` for stability) and how the chosen parameters interact to ensure reliable signal recovery (via the **perfect recovery criterion `r < 1`**). The analysis therefore revolves around finding the optimal balance between the normalized threshold **`d_norm`** and the bias **`b`**.
+
+> [!NOTE]
+> **Developer's Note:** 
 
 ## Core Concepts 
 
-1. **Time Encoding/Decoding (TEM/TDM):** A method where signal amplitude information is encoded into the timing of discrete events (spikes or level crossings) rather than sampled at fixed intervals. 
-
-2. **Asynchronous Sigma-Delta Modulator (ASDM):** A feedback system typically consisting of an integrator, a quantizer (like a Schmitt trigger), and a feedback loop. In this context, it acts as the TEM, generating spike times based on the input signal. 
-
-3. **Perfect Recovery Condition:** The referenced paper shows that under certain conditions (specifically, if the time between consecutive spikes is bounded, related to the Nyquist rate and signal bounds), the original bandlimited signal can be perfectly recovered from the spike times. 
-
-4. **Normalized Threshold (`d_norm`):** The paper introduces an equivalent circuit where the ASDM's Schmitt trigger hysteresis is normalized. This `d_norm` parameter (measured in seconds in the equivalent circuit) is crucial for recovery quality. Because the ASDM operates asynchronously, traditional sampling frequency isn't the primary tuning parameter; `d_norm` is key. 
-
-5. **Parametric Analysis:** This toolkit focuses on studying how varying `d_norm` impacts the accuracy (e.g., error analysis: Median error, Normalized Mean Squared Error) and efficiency (e.g., number of spikes) of the encoding-decoding process, aiming to find an optimal `d_norm` for a given signal. 
-
-6. **Comparison Analyses:**  
-	- **Nyquist Analysis:** Compares the ASDM recovery to traditional uniform sampling at different rates, up to the rate achieved by the ASDM with the optimal `d_norm`.
-	- **Fourier Analysis:** Compares the frequency spectrum of the original signal, the ASDM-recovered signal, and a traditionally sampled signal. 
+1.  **Time Encoding/Decoding (TEM/TDM):** Representing signal amplitude via asynchronous spike timings.
+2.  **Asynchronous Sigma-Delta Modulator (ASDM):** The physical circuit (gain `k`, bias `b`, threshold `delta`) used as the TEM.
+3.  **Normalization & Constraints:** Using the paper's normalized model simplifies analysis but introduces implicit constraints:
+-  **Stability:** The physical bias `b` *must* be greater than the peak signal amplitude `c`.
+- **Recovery:** The perfect recovery condition `r = (d_norm / (1 - c/b)) * (Ω / π) < 1` links the normalized threshold `d_norm`, the *bias ratio* `b/c`, and the signal bandwidth `Ω`. Satisfying this is essential for accurate decoding.
+4.  **Key Parameters for Sizing (`b`, `d_norm`):** Due to the constraints, finding the optimal *physical* setup involves effectively tuning `b` (while ensuring stability `b>c`) and `d_norm` (while ensuring recovery `r<1`). These become the two primary degrees of freedom explored in the parametric studies.
+5.  **Parametric "Sizing":** This toolkit performs parametric studies varying `b` and `d_norm` (individually or combined) to map the performance landscape. The goal is to "size" the modulator by finding parameter combinations that optimize desired error metrics (e.g., Median Error, NRMSE) while respecting computational limits (time threshold) and performance bounds (error threshold).
+6.  **Optimal Selection:** Based on the parametric results, an "optimal" combination of (`b`, `d_norm`) is selected according to user-defined criteria (e.g., minimize median error within time/error limits).
+7.  **Comparison Analyses:**
+- **Nyquist:** Benchmarks the optimally configured ASDM against traditional, amplitude-based, equispaced sampling (reconstructed via splines) over a range of sampling points (`N`) from the Nyquist limit up to the number of spikes generated by the optimal ASDM (`N_spikes_opt`).
+- **Fourier:** Compares the frequency spectra of the original signal, the optimal ASDM reconstruction, and the traditional reconstruction (at `N = N_spikes_opt`) to assess information preservation and potential distortion in the frequency domain, based on the principle that signals can be represented by orthogonal frequency components.
 
 ## Project Structure
 
 ```plaintext
 ├── docs                     # Documentation and diagrams
-│   ├── workflows            # Mermaid diagrams for workflows
-│   ├── functionalities      # Mermaid diagrams for core functions
-│   └── project_structure.md # Visualization of the structure
+│   ├── managers             # Managers' documentation
+│   ├── functionalities      # Core functions' documentation
+│   ├── resources            # Resources accessible to the toolkit: images, .pfd, ...
+│   └── project.md           # Toolkit overview
 ├── src                      # Source code
 │   ├── controllers          # Handlers for configuration, input, studies, results
 │   │   ├── configuration.py
@@ -53,14 +55,15 @@ The core idea tested is that by carefully selecting the normalized threshold `d_
 ├── Input                    # Folder for input data files (e.g., signal.csv)
 ├── Output                   # Folder for all generated results (plots, data, logs)
 │   ├── parametric_delta     # Results for delta parametric study
-│   ├── (parametric_freq)    # Optional: Freq study results
-│   ├── (parametric_...)     # Optional: Other study results
+│   ├── parametric_bias      # Results for delta parametric study
+│   ├── parametric_biasDelta # Results for biparametric study
 │   ├── nyquist              # Results for Nyquist analysis
 │   ├── fourier              # Results for Fourier analysis
 │   ├── optima               # Results for optimal conditions study
 ├── launcher.py              # Main script to run the toolkit
 ├── config.txt               # Configuration file for specifying runs
-└── requirements.txt         # Python package dependencies
+├── requirements.txt         # Python package dependencies
+└── TEM-TDM_Toolkit.ipynb    # Code to be run in Google Colab
 ```
 
 ## Repository explanation: Manufacturing plant analogy
@@ -120,10 +123,10 @@ Thinking of the TEM-TDM Toolkit as a specialized manufacturing plant for process
 3.  **Activating Workflows (`launcher.py`):** The plant manager (`launcher.py`) reviews the interpreted blueprint and activates one or both of the main workflows as specified:
     *   **Production Line (`Execution Flow`):** If activated, this workflow focuses on *generating* data.
         *   **Receiving/Internal Manufacturing (`input_handler.py`):** This department secures the raw signal, either by loading it from external suppliers (Excel/CSV files in `Input/`) or by manufacturing it internally using standard specifications (`models/input_signal.py`).
-        *   **Production Floor Supervision (`parametric_handler.py`):** This supervisor oversees the running of parametric studies. It instructs the simulation workshop (`parametric/studies.py`) to perform the core TEM encoding and TDM decoding simulations for various parameters (primarily `d_norm`). It uses the quality control lab (`utilities/metrics.py`) to measure performance during production. The results of these simulations (metrics vs. parameters) are considered intermediate goods.
+        *   **Production Floor Supervision (`parametric_handler.py`):** This supervisor oversees the running of parametric studies. It instructs the simulation workshop (`parametric/studies.py`) to perform the core encoding and decoding simulations for the two degrees of freedon: `b` and `d_norm`. It uses the quality control lab (`utilities/metrics.py`) to measure performance during production. The results of these simulations (metrics vs. parameters) are considered intermediate goods.
     *   **Analysis & Reporting (`Results Flow`):** If activated, this workflow focuses on *analyzing* data to produce final insights.
         *   **Analysis Department Management (`results_handler.py`):** This manager coordinates the post-processing analysis. It retrieves the necessary intermediate goods (parametric study results), *either* fresh from the production line (if `Execution Flow` just ran) *or* from previous runs stored in the warehouse (`Output/`). It then dispatches tasks to specialized analysis teams:
-            *   Optimization Team (`analysis/optima.py`): Finds the best operating parameters (`d_norm`) based on criteria from the blueprint (if any rhreshos where given in the elapsed time on the encoding/decoding process or the median error).
+            *   Optimization Team (`analysis/optima.py`): Finds the best operating parameters (`b`, `d_norm`) based on criteria from the blueprint (if any thresholds were given in the elapsed time on the encoding/decoding process or the median error).
             *   Nyquist Benchmarking Team (`analysis/nyquist.py`): Compares ASDM performance against traditional uniform sampling.
             *   Fourier Benchmarking Team (`analysis/fourier.py`): Analyzes the signal's fidelity in the frequency domain.
 
@@ -139,6 +142,7 @@ Thinking of the TEM-TDM Toolkit as a specialized manufacturing plant for process
     *   Process Logs: Detailed text logs documenting each run.
 
 6.  **Shipping:** The plant delivers the final requested outputs (plots, data summaries, optimal parameters) as specified in the original blueprint (`config.txt`) and stored in the `Output/` warehouse.
+
 
 ## Installation
 
@@ -205,8 +209,53 @@ This file uses a simple `Key: Value` format, with comments denoted by `#`. Befor
 1.  **Workflow:** Whether to run parametric simulations (`Execution Flow`), perform analysis on results (`Results Flow`), or both.
 2.  **Input Signal:** Where to get the signal (`Input Source`: from a file or generated) and its specific parameters (filename, sampling rate, generation type, duration, frequencies, etc.).
 3.  **Output Control:** Where to save results (`Output Folder` and specific subfolders) and whether to generate plots, text logs, and pickle files.
-4.  **Parametric Studies:** Which parameter sweeps to perform (primarily `Run Parametric Delta`), the ranges for those sweeps (`Delta Range`), and default values for non-varying parameters.
+4.  **Parametric Studies:** Which parameter sweeps to perform (`run_parametric_delta`, `run_parametric_bias`, `run_biparametric`). Define the ranges (`delta_range`, `bias_range`). Crucially, the **`bias_range` must only contain values `b > c`** (where `c = max(|x(t)|)`). Define default values for non-swept parameters.
 5.  **Analysis Tasks:** Which analyses to run after the simulations (`Run Optimal`, `Run Nyquist`, `Run Fourier`) and any thresholds used for finding optimal conditions.
 
 **Refer to the detailed comments within the `config.txt` file itself for explanations of each specific parameter.**
 
+
+## A Note on Project Evolution and Scope
+
+This toolkit represents a significant part of my final degree project (TFG), but it wasn't the initial plan. My degree project involves both understanding the theory behind ASDM encoding/decoding for turbulent signals (based on the Bionet group's research) and conducting experiments at INTA to characterize turbulence using a sweeping jet actuator.
+
+Early on, I realized that simply pursuing the theoretical and experimental parts separately wouldn't be as impactful or satisfying. I wanted to actively connect them and create something tangible and meaningful. This led to the idea of building this toolkit – refactoring my initial simulation codes into a flexible and scalable tool.
+
+**This refactoring effort, and the design philosophy behind it, wouldn't have been possible without the experiences gained at my workplace and the invaluable guidance of Fernando.** The constant need to automate processes requires to identify patterns, group functions into logical tasks and even workflows. He fostered a deeper appreciation for Python as a versatile tool – a true canvas for building complex solutions. It is a true skill to abstract technical details to build flexible systems, which he is a master of. Surrounded by this rich environment, the tool could only be born. This experience directly inspired the concept of structuring this toolkit like a "manufacturing plant", with distinct workflows, managers, and specialized units.
+
+As the workload from my cousework progressed and complexity of the analysis increased, I needed an efficient way to run various simulations, manage data interactions, and store results without getting bogged down. This toolkit became the bridge, allowing me to test theoretical concepts (like the ASDM parameters) and potentially apply them to experimental data contexts later.
+
+This exploration led to the current focus on the **bias (`b`)** and **normalized threshold (`d_norm`)** as the key parameters for "sizing" the ASDM encoder, constrained by stability (`b>c`) and perfect recovery (`r<1`). The toolkit is therefore built to perform parametric studies on these two parameters, individually or together, allowing a search for the optimal operating point that minimizes a chosen error metric within computational constraints.
+
+Building this toolkit has been an invaluable learning experience, significantly enhancing my understanding of the underlying theory. Although it emerged from the specific needs of my degree project, I believe its structured approach could be beneficial to others in the research department or anyone undertaking similar signal-processing explorations. **I hope this repository serves as a useful example and a building block for bigger and better things.**
+
+
+## Future Directions and Potential Research Paths
+
+While this toolkit provides a robust framework for analyzing ASDM-based time encoding, I can sense some exciting paths for future research and development:
+
+1.  **Refining Physical Parameter Selection (`k`, `b`, `delta`):**
+    
+    The current approach translates the optimal normalized parameters (`b`, `d_norm`) back to physical ones (`k`, `b`, `delta`) by applying stability (`b>c`) and recovery (`r<1`) constraints, often requiring iterative adjustments.
+
+    Could more formal methods, perhaps inspired by control theory techniques for tuning controllers like PIDs (e.g., Ziegler-Nichols methods, frequency response analysis), be adapted? 
+    
+    These methods analytically or empirically determine controller gains based on system response. Exploring if the ASDM's feedback dynamics share characteristics that allow similar tuning approaches for `k`, `b`, and `delta` could maybe lead to more direct and optimized physical parameter selection.
+
+2.  **Physics-Informed Parameter Prediction for Specific Signals:**
+    
+    For specific signal classes like turbulence, the underlying physics dictates relationships between key quantities. Dimensional analysis, particularly using the **Buckingham Pi theorem**, allows identifying fundamental dimensionless groups (e.g., Reynolds number, Strouhal number, pressure coefficients for aerodynamic signals).
+    
+    Could these dimensionless groups, which characterize the signal's behavior, be correlated with the optimal `d_norm` or the optimal bias ratio `b/c` required for efficient encoding? 
+    
+    Finding such a relationship could allow predicting near-optimal encoding parameters directly from the physical characteristics of the flow or signal source, significantly reducing the need for extensive parametric sweeps. 
+    
+    This represents the beautiful interplay between physics and mathematics.
+
+3.  **Hardware Implementation and Validation:**
+    
+    Building a physical circuit based on the selected `k`, `b`, `delta` parameters and validating its performance against simulations using real-world signals (including the experimental sweeping jet data) would be the ultimate test of the methodology.
+
+4.  **Exploring Alternative TEM Architectures:**
+    
+    Applying the toolkit's analysis framework (parametric studies, comparisons) to other TEM models proposed by the Bionet group or elsewhere (e.g., Integrate-and-Fire neurons with different adaptation mechanisms) could provide valuable comparative insights.

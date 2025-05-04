@@ -1,7 +1,7 @@
 # ----------- Settings parameters -----------
 Input Folder: Input             # Carpeta con los archivos excel que contienen los resultados de los experimentos (fuentes de señal)
 Output Folder: Output           # Carpeta con los resultados de todo el proceso: plots, excels, pickle, ...
-Execution Flow: False           # Corre el flujo de trabajo de ejecución de los cálculos paramétricos
+Execution Flow: True            # Corre el flujo de trabajo de ejecución de los cálculos paramétricos
 Results Flow: True              # Corre el flujo de trabajo de generación de resultados
 
 
@@ -15,7 +15,7 @@ Experiment Sampling Rate: 1000                # Sampling rate of the sensors use
 Experiment Duration: 1                        # Duration [s]
 
 ## Generated signal
-Generated Input Type: multifreq               # multisin, paper, multifreq
+Generated Input Type: multisin                # multisin, paper, multifreq
 Signal Duration: 1                            # Duration [s]
 Encoder Resolution: 0.0                       # Encoder resolution (dte)
 Signal Sampling Rate: 20000                   # Sampling rate [Hz]
@@ -37,10 +37,10 @@ Store in pickle: True                                   # Bool: do you want to s
 
 
 # ----------- Parametric Studies parameters -----------
-Run Parametric Bias: False                              # Bool: do you want to plot perform the parametric study on the encoder?
-Run Parametric Delta: False                             # Bool: do you want to plot perform the parametric study on the normalized threshold?
-Run Biparametric: False                                 # Bool: do you want to plot perform the bi-parametric study on the encoder bias and normalized threshold
-Delta Range: 0.0001, 0.1, 0.0001                        # Range of normalized thresholds -> start, end, step
+Run Parametric Bias: Flase                              # Bool: do you want to plot perform the parametric study on the encoder?
+Run Parametric Delta: True                              # Bool: do you want to plot perform the parametric study on the normalized threshold?
+Run Biparametric: True                                  # Bool: do you want to plot perform the bi-parametric study on the encoder bias and normalized threshold
+Delta Range: 0.0001, 0.1, 0.001                         # Range of normalized thresholds -> start, end, step
 Default Frequency: 20000                                # Default Sampling rate [Hz]
 Default Bias: 1.05                                      # Default Encoder Bias
 Default Delta: 0.001                                    # Default Hysteresis width
