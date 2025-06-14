@@ -1,4 +1,6 @@
 # TEM-TDM Toolkit
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This Python toolkit is designed to assess the validity and performance of Asynchronous Sigma-Delta Modulators (ASDM) when used as Time Encoding Machines (TEM) and Time Decoding Machines (TDM), particularly for complex or turbulent signals. 
 
 It implements and analyzes the concepts presented in the paper **[Perfect Recovery and Sensitivity Analysis of Time Encoded Bandlimited signals](docs/resources/Perfect-Recovery-and-Sensitivity-Analysis-of-Time-Encoded-Bandlimited-signals.pdf)** by Lazar and Tóth (IEEE TCAS-I, 2004), developed by researchers in the [Bionet Group at Columbia University](http://www.bionet.ee.columbia.edu/research/nipm/tems). The toolkit leverages the paper's normalization technique to manage the complexity of the ASDM's three physical parameters (`k`, `b`, `delta`).
